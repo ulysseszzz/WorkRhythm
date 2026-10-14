@@ -42,8 +42,13 @@ struct HydrationBottleCard: View {
                         Text("\(progress.totalML)").font(.system(size: compact ? 23 : 27, weight: .semibold, design: .rounded))
                         Text("/ \(progress.plan.targetML) mL").font(.system(size: 10)).foregroundStyle(.secondary)
                     }
-                    Text(progress.garden.hasDrinks ? recipe.title : "今天的花园，等你来浇灌")
-                        .font(.system(size: 11, weight: .medium)).foregroundStyle(recipe.tint)
+                    HStack(spacing: 4) {
+                        Text(progress.garden.hasDrinks ? recipe.title : "今天的花园，等你来浇灌")
+                        if progress.completed {
+                            Image(systemName: "trophy.fill").accessibilityLabel("今日已获得开花奖杯")
+                        }
+                    }
+                    .font(.system(size: 11, weight: .medium)).foregroundStyle(recipe.tint)
                     HStack {
                         Text("\(progress.count) 次 · \(Int(progress.fraction * 100))%").font(.system(size: 10)).foregroundStyle(.secondary)
                         Spacer(minLength: 0)

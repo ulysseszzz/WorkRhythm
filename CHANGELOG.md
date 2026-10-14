@@ -2,6 +2,20 @@
 
 All notable changes are documented here. The project follows Semantic Versioning from the first public release.
 
+## [1.1.0] - 2026-10-15
+
+### Added
+
+- Persistent garden trophies awarded when the daily hydration target is first reached.
+- Calendar view with monthly and lifetime trophy counts plus per-day flower details.
+- One-time trophy backfill for qualifying hydration history.
+
+### Behavior
+
+- A trophy keeps the target that applied when it was awarded.
+- Additional drinks on the same day can upgrade the trophy's flower recipe.
+- Undoing a drink does not revoke an already earned trophy.
+
 ## [1.0.0] - 2026-10-15
 
 First public GitHub release.

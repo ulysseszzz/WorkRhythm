@@ -25,10 +25,11 @@ public final class Repository {
         CREATE TABLE IF NOT EXISTS sessions(id TEXT PRIMARY KEY, start REAL NOT NULL, payload BLOB NOT NULL);
         CREATE TABLE IF NOT EXISTS focus(id TEXT PRIMARY KEY, start REAL NOT NULL, payload BLOB NOT NULL);
         CREATE TABLE IF NOT EXISTS hydration(id TEXT PRIMARY KEY, start REAL NOT NULL, payload BLOB NOT NULL);
+        CREATE TABLE IF NOT EXISTS garden_trophies(id TEXT PRIMARY KEY, start REAL NOT NULL, payload BLOB NOT NULL);
         CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY, start REAL NOT NULL, payload BLOB NOT NULL);
         CREATE INDEX IF NOT EXISTS events_start ON events(start);
         CREATE TABLE IF NOT EXISTS preferences(id TEXT PRIMARY KEY, start REAL NOT NULL, payload BLOB NOT NULL);
-        PRAGMA user_version=1;
+        PRAGMA user_version=2;
         """)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.deletingLastPathComponent().path)
         try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
@@ -70,6 +71,7 @@ public final class Repository {
     public func save(_ session: Session) throws { try put(session, table: "sessions", id: session.id.uuidString, date: session.start) }
     public func save(_ session: FocusSession) throws { try put(session, table: "focus", id: session.id.uuidString, date: session.start) }
     public func save(_ event: HydrationEvent) throws { try put(event, table: "hydration", id: event.id.uuidString, date: event.timestamp) }
+    public func save(_ trophy: GardenTrophy) throws { try put(trophy, table: "garden_trophies", id: trophy.id.uuidString, date: trophy.day) }
     public func save(_ event: SystemEvent) throws {
         try put(event, table: "events", id: event.id.uuidString, date: event.timestamp)
         eventRevision &+= 1
@@ -79,6 +81,7 @@ public final class Repository {
     public func sessions() throws -> [Session] { try read(Session.self, table: "sessions") }
     public func focuses() throws -> [FocusSession] { try read(FocusSession.self, table: "focus") }
     public func hydration() throws -> [HydrationEvent] { try read(HydrationEvent.self, table: "hydration") }
+    public func gardenTrophies() throws -> [GardenTrophy] { try read(GardenTrophy.self, table: "garden_trophies") }
     public func events(limit: Int = 500) throws -> [SystemEvent] { try read(SystemEvent.self, table: "events", suffix: "ORDER BY start DESC LIMIT \(max(1, limit))") }
     public func settings() throws -> AppSettings { try read(AppSettings.self, table: "preferences", suffix: "WHERE id='settings'").first ?? AppSettings() }
     public func checkpoint() throws -> Checkpoint? { try read(Checkpoint.self, table: "preferences", suffix: "WHERE id='checkpoint'").first }

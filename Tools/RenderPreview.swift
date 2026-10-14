@@ -262,8 +262,26 @@ struct RenderPreview {
         precondition(drinks.waterProgress.totalML == 1600 && drinks.waterProgress.completed)
         precondition(drinks.waterProgress.lastEntry?.amountML == 350)
         precondition(drinks.waterProgress.lastEntry?.drinkTitle == "一杯咖啡")
-        precondition(drinks.hydrationFeedback.contains("350"))
+        precondition(drinks.hydrationFeedback.contains("获得今日奖杯"))
+        precondition(drinks.gardenTrophies.count == 1)
         try await capture(drinkCard(), size: NSSize(width: 300, height: 420), name: "drink-presets-custom")
+        let trophyApp = try AppController(dataDirectory: directory.appendingPathComponent("trophies"))
+        var trophyPlan = trophyApp.settings.waterPlan
+        trophyPlan.dailyTargetML = 300
+        let trophyDays = [-18, -9, -3, 0]
+        let trophyTypes: [DrinkPreset] = [.waterBottle, .coffee, .tea, .milk]
+        for (offset, preset) in zip(trophyDays, trophyTypes) {
+            let day = calendar.date(byAdding: .day, value: offset, to: calendar.startOfDay(for: Date()))!
+            try trophyApp.ledger.drink(at: day.addingTimeInterval(12 * 3600), source: "preview_fixture",
+                                       amountML: 300, drinkPresetID: preset.rawValue)
+            try trophyApp.ledger.awardGardenTrophy(for: day, plan: trophyPlan)
+        }
+        precondition(trophyApp.gardenTrophies.count == 4)
+        precondition(trophyApp.gardenTrophies.last?.recipe == .milkLily)
+        try await capture(HistoryPage(app: trophyApp).background(Color(nsColor: .windowBackgroundColor)),
+                          size: NSSize(width: 790, height: 900), name: "trophy-calendar")
+        try await capture(HistoryPage(app: trophyApp).background(Color(nsColor: .windowBackgroundColor)),
+                          size: NSSize(width: 790, height: 900), name: "trophy-calendar-dark", dark: true)
         let fresh = try AppController(dataDirectory: directory.appendingPathComponent("actual-amounts"))
         fresh.state = .active
         fresh.drink(source: "preview_fixture", preset: .coffee, amountML: 500)
@@ -343,7 +361,7 @@ struct RenderPreview {
         precondition(reopenedSlider.waterProgress.garden.recipe == .matcha)
         sliderApp.undoLastDrink()
         precondition(sliderApp.waterProgress.totalML == 150 && sliderApp.waterProgress.garden.recipe == .teaBell)
-        try Data("PASS: six drinks, four-stop slider, invalid/off-grid rejected, tea150 milk600 persisted, matcha undo/restart, twelve recipe artwork previews; main menu no NSScrollView and natural contents fit 440/380pt; legacy timeline/cache/hydration regression. Live animation/visibility: \(canCheckLiveAnimation ? "PASS" : "SKIPPED (window occluded)")".utf8)
+        try Data("PASS: garden trophy persistence and four-day calendar in light/dark; six drinks, four-stop slider, invalid/off-grid rejected, tea150 milk600 persisted, matcha undo/restart, twelve recipe artwork previews; main menu no NSScrollView and natural contents fit 440/380pt; legacy timeline/cache/hydration regression. Live animation/visibility: \(canCheckLiveAnimation ? "PASS" : "SKIPPED (window occluded)")".utf8)
             .write(to: output.appendingPathComponent("result.txt"))
         NSApp.terminate(nil)
     }

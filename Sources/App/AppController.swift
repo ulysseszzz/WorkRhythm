@@ -65,6 +65,7 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
     var sessions: [Session] { ledger.sessions }
     var focuses: [FocusSession] { ledger.focuses }
     var water: [HydrationEvent] { ledger.hydration }
+    var gardenTrophies: [GardenTrophy] { ledger.gardenTrophies }
     var waterProgress: HydrationProgress { HydrationProgress(events: water, plan: settings.waterPlan, date: now) }
     func updateWaterPlan(_ change: (inout HydrationPlan) -> Void) {
         var plan = settings.waterPlan
@@ -104,6 +105,7 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
         bootID = String(Date().timeIntervalSince1970 - ProcessInfo.processInfo.systemUptime)
         reminders = ReminderPolicy(now: Date(), settings: initialSettings, lastDrink: ledger.hydration.last { $0.voidedAt == nil }?.timestamp)
         super.init()
+        try ledger.backfillGardenTrophies(plan: initialSettings.waterPlan)
         try ledger.recover(checkpoint: repository.checkpoint(), now: Date())
         try repository.pruneEvents(before: Date().addingTimeInterval(-30 * 86400))
         machine.window = settings.effectiveWindow
@@ -118,7 +120,7 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
         configureNotifications()
     }
     func start() {
-        log("app_start", "version=1.0.0 schema=1; public release with manual-lock detection")
+        log("app_start", "version=1.1.0 schema=2; garden trophy calendar")
         monitor.start()
         startHeartbeat()
         checkpoint()
@@ -287,7 +289,12 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
         }
         now = Date()
         let amount = amountML ?? preset.map { settings.waterPlan.servingML(for: $0) } ?? settings.waterPlan.servingML
-        do { try ledger.drink(at: now, source: source, amountML: amount, drinkPresetID: preset?.rawValue) }
+        let alreadyAwarded = gardenTrophies.contains { Calendar.current.isDate($0.day, inSameDayAs: now) }
+        let trophy: GardenTrophy?
+        do {
+            try ledger.drink(at: now, source: source, amountML: amount, drinkPresetID: preset?.rawValue)
+            trophy = try ledger.awardGardenTrophy(for: now, plan: settings.waterPlan)
+        }
         catch { errorMessage = "喝水记录保存失败：\(error.localizedDescription)"; return }
         if let preset, amountML != nil {
             var plan = settings.waterPlan
@@ -299,7 +306,11 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
         reminders.lastHydrationNotification = .distantPast
         if pendingReminder == "water" { pendingReminder = nil }
         UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ["water"])
-        hydrationFeedback = "已记录\(preset?.shortTitle ?? "水") +\(amount) mL"
+        if let trophy, !alreadyAwarded {
+            hydrationFeedback = "获得今日奖杯 · \(trophy.recipe.title)"
+        } else {
+            hydrationFeedback = "已记录\(preset?.shortTitle ?? "水") +\(amount) mL"
+        }
         log("hydration_done", "\(source) amountML=\(amount) preset=\(preset?.rawValue ?? "custom")"); revision += 1
     }
     func undoLastDrink() {

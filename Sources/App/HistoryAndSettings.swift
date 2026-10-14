@@ -33,6 +33,7 @@ struct HistoryPage: View {
                     MetricCard(title: "专注", value: DurationText.short(values.reduce(0) { $0 + $1.focus }), color: .teal)
                     MetricCard(title: "主动离开", value: DurationText.short(values.reduce(0) { $0 + $1.away }), color: .orange)
                 }
+                GardenTrophyCalendar(trophies: app.gardenTrophies, month: date, selection: $date)
                 Chart(values, id: \.date) { s in
                     BarMark(x: .value("日期", s.date, unit: .day), y: .value("小时", s.work / 3600))
                         .foregroundStyle(by: .value("状态", "在工位"))
@@ -91,6 +92,98 @@ struct HistoryPage: View {
                 }
             }.padding(28)
         }.navigationTitle("统计")
+    }
+}
+
+struct GardenTrophyCalendar: View {
+    let trophies: [GardenTrophy]
+    let month: Date
+    @Binding var selection: Date
+    private var calendar: Calendar { .current }
+    private var monthRange: DateInterval { calendar.dateInterval(of: .month, for: month)! }
+    private var monthTrophies: [GardenTrophy] {
+        trophies.filter { monthRange.contains($0.day) }
+    }
+    private var weekdays: [String] {
+        let symbols = DateFormatter().veryShortWeekdaySymbols ?? ["日", "一", "二", "三", "四", "五", "六"]
+        let offset = max(0, calendar.firstWeekday - 1)
+        return Array(symbols[offset...]) + Array(symbols[..<offset])
+    }
+    private var cells: [Date?] {
+        let start = monthRange.start
+        let leading = (calendar.component(.weekday, from: start) - calendar.firstWeekday + 7) % 7
+        let count = calendar.range(of: .day, in: .month, for: start)?.count ?? 0
+        var values = Array<Date?>(repeating: nil, count: leading)
+        values += (0..<count).map { calendar.date(byAdding: .day, value: $0, to: start) }
+        while values.count % 7 != 0 { values.append(nil) }
+        return values
+    }
+    private var selectedTrophy: GardenTrophy? {
+        trophies.first { calendar.isDate($0.day, inSameDayAs: selection) }
+    }
+    private func trophy(on day: Date) -> GardenTrophy? {
+        monthTrophies.first { calendar.isDate($0.day, inSameDayAs: day) }
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("开花奖杯", systemImage: "trophy.fill").font(.title2.weight(.semibold))
+                Spacer()
+                Text("本月 \(monthTrophies.count) 座 · 累计 \(trophies.count) 座")
+                    .font(.callout).foregroundStyle(.secondary).monospacedDigit()
+            }
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 7), spacing: 6) {
+                ForEach(weekdays, id: \.self) { weekday in
+                    Text(weekday).font(.caption).foregroundStyle(.secondary).frame(height: 18)
+                }
+                ForEach(Array(cells.enumerated()), id: \.offset) { _, day in
+                    if let day {
+                        let award = trophy(on: day)
+                        Button { selection = day } label: {
+                            VStack(spacing: 3) {
+                                Text("\(calendar.component(.day, from: day))")
+                                    .font(.caption).monospacedDigit()
+                                Image(systemName: award == nil ? "circle" : "trophy.fill")
+                                    .font(.system(size: award == nil ? 9 : 17, weight: .semibold))
+                                    .foregroundStyle(award?.recipe.tint ?? Color.secondary.opacity(0.22))
+                            }
+                            .frame(maxWidth: .infinity).frame(height: 48)
+                            .background(calendar.isDate(day, inSameDayAs: selection) ? Color.accentColor.opacity(0.10) : .clear,
+                                        in: RoundedRectangle(cornerRadius: 6))
+                            .overlay {
+                                if calendar.isDateInToday(day) {
+                                    RoundedRectangle(cornerRadius: 6).stroke(Color.accentColor.opacity(0.45), lineWidth: 1)
+                                }
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(award.map { "\(day.formatted(date: .abbreviated, time: .omitted))，\($0.recipe.title)奖杯" }
+                                            ?? "\(day.formatted(date: .abbreviated, time: .omitted))，未获得奖杯")
+                    } else {
+                        Color.clear.frame(height: 48)
+                    }
+                }
+            }
+            Divider()
+            if let award = selectedTrophy {
+                HStack(spacing: 14) {
+                    HydrationScene(theme: .flowers, fraction: 1, motionEnabled: false, recipe: award.recipe)
+                        .frame(width: 48, height: 58)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(award.recipe.title).font(.headline).foregroundStyle(award.recipe.tint)
+                        Text("\(award.totalML) / \(award.targetML) mL · \(award.recipe.formula)")
+                            .font(.callout).foregroundStyle(.secondary).monospacedDigit()
+                        Text("获得于 \(award.awardedAt.formatted(date: .abbreviated, time: .shortened))")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            } else {
+                Label("所选日期尚未获得开花奖杯", systemImage: "trophy")
+                    .font(.callout).foregroundStyle(.secondary).frame(height: 58)
+            }
+            Text("当日饮水达到当时目标即获得奖杯；当天继续组合饮品可升级花型。奖杯获得后不会因撤销或之后修改目标而消失。")
+                .font(.caption).foregroundStyle(.secondary)
+        }
     }
 }
 

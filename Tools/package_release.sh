@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-VERSION="${VERSION:-1.0.0}"
+VERSION="${VERSION:-1.1.0}"
 DERIVED_DATA="${DERIVED_DATA_PATH:-${TMPDIR:-/tmp}/WorkRhythm-Release-DerivedData}"
 OUTPUT_DIR="${1:-$ROOT/dist}"
 APP="$DERIVED_DATA/Build/Products/Release/WorkRhythm.app"

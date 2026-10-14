@@ -89,6 +89,22 @@ public struct HydrationEvent: Codable, Identifiable {
         self.drinkPresetID = drinkPresetID
     }
 }
+public struct GardenTrophy: Codable, Identifiable, Equatable {
+    public var id = UUID()
+    public var day: Date
+    public var awardedAt: Date
+    public var recipeID: String
+    public var totalML: Int
+    public var targetML: Int
+    public var recipe: GardenRecipe { GardenRecipe(rawValue: recipeID) ?? .dew }
+    public init(day: Date, awardedAt: Date, recipe: GardenRecipe, totalML: Int, targetML: Int) {
+        self.day = day
+        self.awardedAt = awardedAt
+        recipeID = recipe.rawValue
+        self.totalML = totalML
+        self.targetML = targetML
+    }
+}
 public struct SystemEvent: Codable, Identifiable {
     public var id = UUID()
     public var timestamp: Date

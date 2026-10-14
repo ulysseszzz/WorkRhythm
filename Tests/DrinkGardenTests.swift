@@ -96,4 +96,53 @@ final class DrinkGardenTests: XCTestCase {
         XCTAssertEqual(restored.servingML(for: .coffee), 500)
         XCTAssertEqual(restored.servingML(for: .milkTea), 700)
     }
+    func testGardenTrophyAwardsOnceUpgradesAndSurvivesUndoRestart() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repo = try Repository(url: directory.appendingPathComponent("test.sqlite"))
+        let ledger = try SessionLedger(repository: repo)
+        var plan = HydrationPlan()
+        plan.dailyTargetML = 300
+
+        try ledger.drink(at: date, source: "slider", amountML: 150, drinkPresetID: DrinkPreset.coffee.rawValue)
+        XCTAssertNil(try ledger.awardGardenTrophy(for: date, plan: plan))
+        try ledger.drink(at: date + 1, source: "slider", amountML: 150, drinkPresetID: DrinkPreset.coffee.rawValue)
+        let first = try XCTUnwrap(ledger.awardGardenTrophy(for: date, plan: plan))
+        XCTAssertEqual(first.recipe, .sunshine)
+        XCTAssertEqual(first.totalML, 300)
+        XCTAssertEqual(first.targetML, 300)
+
+        try ledger.drink(at: date + 2, source: "slider", amountML: 150, drinkPresetID: DrinkPreset.milk.rawValue)
+        let upgraded = try XCTUnwrap(ledger.awardGardenTrophy(for: date, plan: plan))
+        XCTAssertEqual(upgraded.id, first.id)
+        XCTAssertEqual(upgraded.recipe, .creamDahlia)
+        XCTAssertEqual(ledger.gardenTrophies.count, 1)
+        for event in ledger.hydration { try ledger.undoDrink(id: event.id, at: date + 3) }
+        XCTAssertEqual(ledger.gardenTrophies.first?.recipe, .creamDahlia)
+
+        let restored = try SessionLedger(repository: repo)
+        XCTAssertEqual(restored.gardenTrophies, ledger.gardenTrophies)
+        let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: date)!
+        try restored.drink(at: tomorrow, source: "slider", amountML: 300, drinkPresetID: DrinkPreset.tea.rawValue)
+        _ = try restored.awardGardenTrophy(for: tomorrow, plan: plan)
+        XCTAssertEqual(restored.gardenTrophies.count, 2)
+    }
+    func testHistoricalHydrationBackfillsStableTrophies() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repo = try Repository(url: directory.appendingPathComponent("test.sqlite"))
+        let writer = try SessionLedger(repository: repo)
+        try writer.drink(at: date, source: "old", amountML: 600, drinkPresetID: DrinkPreset.tea.rawValue)
+        let restored = try SessionLedger(repository: repo)
+        var plan = HydrationPlan()
+        plan.dailyTargetML = 600
+        try restored.backfillGardenTrophies(plan: plan)
+        try restored.backfillGardenTrophies(plan: plan)
+        let trophy = try XCTUnwrap(restored.gardenTrophies.first)
+        XCTAssertEqual(restored.gardenTrophies.count, 1)
+        XCTAssertEqual(trophy.recipe, .teaBell)
+        XCTAssertEqual(trophy.totalML, 600)
+        XCTAssertEqual(trophy.targetML, 600)
+        XCTAssertEqual(try Repository(url: repo.url).gardenTrophies().count, 1)
+    }
 }

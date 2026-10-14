@@ -6,10 +6,12 @@ public final class SessionLedger {
     public private(set) var focuses: [FocusSession] { didSet { timelineRevision &+= 1 } }
     public private(set) var timelineRevision: UInt64 = 0
     public private(set) var hydration: [HydrationEvent]
+    public private(set) var gardenTrophies: [GardenTrophy]
     public let repository: Repository
     public init(repository: Repository) throws {
         self.repository = repository
-        sessions = try repository.sessions(); focuses = try repository.focuses(); hydration = try repository.hydration()
+        sessions = try repository.sessions(); focuses = try repository.focuses()
+        hydration = try repository.hydration(); gardenTrophies = try repository.gardenTrophies()
     }
     public var openWork: Session? { sessions.last { $0.kind == .work && $0.end == nil } }
     public var currentFocus: FocusSession? { focuses.last { $0.end == nil } }
@@ -126,5 +128,36 @@ public final class SessionLedger {
         var event = hydration[index]
         event.voidedAt = at
         try repository.save(event); hydration[index] = event
+    }
+    @discardableResult
+    public func awardGardenTrophy(for date: Date, plan: HydrationPlan,
+                                  calendar: Calendar = .current) throws -> GardenTrophy? {
+        let progress = HydrationProgress(events: hydration, plan: plan, date: date, calendar: calendar)
+        guard progress.completed, progress.garden.hasDrinks else { return nil }
+        let day = calendar.startOfDay(for: date)
+        if let index = gardenTrophies.firstIndex(where: { calendar.isDate($0.day, inSameDayAs: day) }) {
+            var trophy = gardenTrophies[index]
+            trophy.recipeID = progress.garden.recipe.rawValue
+            trophy.totalML = max(trophy.totalML, progress.totalML)
+            try repository.save(trophy)
+            gardenTrophies[index] = trophy
+            return trophy
+        }
+        let trophy = GardenTrophy(day: day, awardedAt: progress.lastEntry?.timestamp ?? date,
+                                  recipe: progress.garden.recipe, totalML: progress.totalML,
+                                  targetML: plan.targetML)
+        try repository.save(trophy)
+        gardenTrophies.append(trophy)
+        gardenTrophies.sort { $0.day < $1.day }
+        return trophy
+    }
+    public func backfillGardenTrophies(plan: HydrationPlan, calendar: Calendar = .current) throws {
+        let days = Set(hydration.compactMap { event -> Date? in
+            guard event.voidedAt == nil, (event.amountML ?? 0) > 0 else { return nil }
+            return calendar.startOfDay(for: event.timestamp)
+        })
+        for day in days.sorted() {
+            _ = try awardGardenTrophy(for: day, plan: plan, calendar: calendar)
+        }
     }
 }
