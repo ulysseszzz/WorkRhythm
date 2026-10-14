@@ -1,0 +1,72 @@
+[
+  {
+    "cpu_percent_one_core" : 0.54742763180238807,
+    "footprint_mib" : 10.141380310058594,
+    "interrupt_wakeups_per_s" : 8.7146045192784758,
+    "platform_idle_wakeups_per_s" : 0,
+    "resident_mib" : 26.265625,
+    "scenario" : "background",
+    "seconds" : 31.900472291657934,
+    "visible" : false
+  },
+  {
+    "cpu_percent_one_core" : 1.2963672385544145,
+    "footprint_mib" : 24.407188415527344,
+    "interrupt_wakeups_per_s" : 15.506129412738941,
+    "platform_idle_wakeups_per_s" : 0.54819649438976059,
+    "resident_mib" : 64.171875,
+    "scenario" : "menu_bottle",
+    "seconds" : 12.76914404166746,
+    "visible" : true
+  },
+  {
+    "cpu_percent_one_core" : 0.89465631992087946,
+    "footprint_mib" : 27.391586303710938,
+    "interrupt_wakeups_per_s" : 11.733509561467319,
+    "platform_idle_wakeups_per_s" : 0.079280470009914311,
+    "resident_mib" : 62.609375,
+    "scenario" : "menu_flowers",
+    "seconds" : 12.613446916686371,
+    "visible" : true
+  },
+  {
+    "cpu_percent_one_core" : 1.2171632279858529,
+    "footprint_mib" : 27.485336303710938,
+    "interrupt_wakeups_per_s" : 20.33007452123438,
+    "platform_idle_wakeups_per_s" : 0.24995993263812763,
+    "resident_mib" : 61.078125,
+    "scenario" : "menu_ivy",
+    "seconds" : 12.001923541654833,
+    "visible" : true
+  },
+  {
+    "cpu_percent_one_core" : 1.0858907555855741,
+    "footprint_mib" : 27.391586303710938,
+    "interrupt_wakeups_per_s" : 14.232882807842273,
+    "platform_idle_wakeups_per_s" : 0.31281061116136866,
+    "resident_mib" : 61.703125,
+    "scenario" : "menu_motion_off",
+    "seconds" : 12.787290000007488,
+    "visible" : true
+  },
+  {
+    "cpu_percent_one_core" : 1.0086055483728233,
+    "footprint_mib" : 27.407211303710938,
+    "interrupt_wakeups_per_s" : 13.983439965557071,
+    "platform_idle_wakeups_per_s" : 0,
+    "resident_mib" : 54.4375,
+    "scenario" : "hidden_retained",
+    "seconds" : 12.014211125002475,
+    "visible" : false
+  },
+  {
+    "cpu_percent_one_core" : 0.014375237651066552,
+    "footprint_mib" : 26.610336303710938,
+    "interrupt_wakeups_per_s" : 0.47157695957569995,
+    "platform_idle_wakeups_per_s" : 0,
+    "resident_mib" : 51.671875,
+    "scenario" : "hidden_released",
+    "seconds" : 12.723267916648183,
+    "visible" : false
+  }
+]

@@ -1,0 +1,15 @@
+.DS_Store
+.build/
+.swiftpm/
+DerivedData/
+dist/
+.github-cli/
+*.xcuserstate
+xcuserdata/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.log
+*.p12
+*.pem
+*.cer

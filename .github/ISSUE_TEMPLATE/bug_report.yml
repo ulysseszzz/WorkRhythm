@@ -1,0 +1,53 @@
+name: Bug report
+description: Report reproducible incorrect behavior
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: Do not attach personal databases or unreviewed diagnostic exports.
+  - type: input
+    id: version
+    attributes:
+      label: WorkRhythm version
+      placeholder: 1.0.0
+    validations:
+      required: true
+  - type: input
+    id: macos
+    attributes:
+      label: macOS and Mac model
+      placeholder: macOS 15.x, Apple Silicon
+    validations:
+      required: true
+  - type: dropdown
+    id: trigger
+    attributes:
+      label: Relevant trigger
+      options:
+        - Hot Corner lock
+        - Hot Corner display sleep
+        - Control-Command-Q
+        - Apple menu Lock Screen
+        - Automatic lock or sleep
+        - Lid close
+        - Not related to lock detection
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy check
+      options:
+        - label: I removed personal timestamps, coordinates and work-history data.
+          required: true

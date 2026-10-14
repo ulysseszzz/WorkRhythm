@@ -1,0 +1,72 @@
+[
+  {
+    "cpu_percent_one_core" : 0.80867822775141651,
+    "footprint_mib" : 10.016380310058594,
+    "interrupt_wakeups_per_s" : 11.491532291948156,
+    "platform_idle_wakeups_per_s" : 0.062624154179553984,
+    "resident_mib" : 26.1875,
+    "scenario" : "background",
+    "seconds" : 31.936559083347674,
+    "visible" : false
+  },
+  {
+    "cpu_percent_one_core" : 9.8041530410898776,
+    "footprint_mib" : 28.657211303710938,
+    "interrupt_wakeups_per_s" : 72.817251958705654,
+    "platform_idle_wakeups_per_s" : 0.66499773478270008,
+    "resident_mib" : 66.734375,
+    "scenario" : "menu_bottle",
+    "seconds" : 12.030116166657535,
+    "visible" : true
+  },
+  {
+    "cpu_percent_one_core" : 7.0445140526805545,
+    "footprint_mib" : 30.594734191894531,
+    "interrupt_wakeups_per_s" : 74.121902664939611,
+    "platform_idle_wakeups_per_s" : 1.578829765284588,
+    "resident_mib" : 58.875,
+    "scenario" : "menu_flowers",
+    "seconds" : 12.034229666664032,
+    "visible" : true
+  },
+  {
+    "cpu_percent_one_core" : 6.5615061273736375,
+    "footprint_mib" : 30.985359191894531,
+    "interrupt_wakeups_per_s" : 73.621060808547597,
+    "platform_idle_wakeups_per_s" : 0.49856248854546908,
+    "resident_mib" : 50.125,
+    "scenario" : "menu_ivy",
+    "seconds" : 12.03459974998259,
+    "visible" : true
+  },
+  {
+    "cpu_percent_one_core" : 0.207719436390609,
+    "footprint_mib" : 27.282234191894531,
+    "interrupt_wakeups_per_s" : 2.3724000044611899,
+    "platform_idle_wakeups_per_s" : 0,
+    "resident_mib" : 48.28125,
+    "scenario" : "menu_motion_off",
+    "seconds" : 12.645422333327588,
+    "visible" : true
+  },
+  {
+    "cpu_percent_one_core" : 0.76302696325339781,
+    "footprint_mib" : 27.438484191894531,
+    "interrupt_wakeups_per_s" : 12.361555192503447,
+    "platform_idle_wakeups_per_s" : 0,
+    "resident_mib" : 43.59375,
+    "scenario" : "hidden_retained",
+    "seconds" : 12.538875375001226,
+    "visible" : false
+  },
+  {
+    "cpu_percent_one_core" : 0.30776437032481302,
+    "footprint_mib" : 26.563484191894531,
+    "interrupt_wakeups_per_s" : 9.5064173816921009,
+    "platform_idle_wakeups_per_s" : 0,
+    "resident_mib" : 39.96875,
+    "scenario" : "hidden_released",
+    "seconds" : 12.728243999998085,
+    "visible" : false
+  }
+]

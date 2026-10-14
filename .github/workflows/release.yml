@@ -1,0 +1,36 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build and verify universal archive
+        env:
+          VERSION: ${{ github.ref_name }}
+        run: |
+          VERSION="${VERSION#v}" Tools/package_release.sh "$RUNNER_TEMP/release"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release create "${GITHUB_REF_NAME}" \
+              --title "WorkRhythm ${GITHUB_REF_NAME}" \
+              --notes-file RELEASE_NOTES.md
+          fi
+          gh release upload "${GITHUB_REF_NAME}" \
+            "$RUNNER_TEMP/release/WorkRhythm-${GITHUB_REF_NAME}-macOS-universal.zip" \
+            "$RUNNER_TEMP/release/WorkRhythm-${GITHUB_REF_NAME}-SHA256.txt" \
+            --clobber

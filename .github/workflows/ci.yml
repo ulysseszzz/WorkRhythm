@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Core tests
+        run: swift test --scratch-path "$RUNNER_TEMP/WorkRhythm-tests"
+
+      - name: Verify generated Xcode project
+        run: |
+          python3 Tools/generate_project.py
+          git diff --exit-code -- WorkRhythm.xcodeproj
+
+      - name: Build universal Release app
+        run: |
+          xcodebuild \
+            -project WorkRhythm.xcodeproj \
+            -scheme WorkRhythm \
+            -configuration Release \
+            -derivedDataPath "$RUNNER_TEMP/WorkRhythm-DerivedData" \
+            ARCHS="arm64 x86_64" \
+            ONLY_ACTIVE_ARCH=NO \
+            build
+
+      - name: Verify bundle
+        run: |
+          APP="$RUNNER_TEMP/WorkRhythm-DerivedData/Build/Products/Release/WorkRhythm.app"
+          codesign --verify --deep --strict "$APP"
+          lipo -archs "$APP/Contents/MacOS/WorkRhythm"
