@@ -8,6 +8,7 @@ All notable changes are documented here. The project follows Semantic Versioning
 
 - Persistent garden trophies awarded when the daily hydration target is first reached.
 - Calendar view with monthly and lifetime trophy counts plus per-day flower details.
+- Calendar award cells render the flower recipe grown on that day instead of a generic trophy.
 - One-time trophy backfill for qualifying hydration history.
 
 ### Behavior

@@ -143,9 +143,16 @@ struct GardenTrophyCalendar: View {
                             VStack(spacing: 3) {
                                 Text("\(calendar.component(.day, from: day))")
                                     .font(.caption).monospacedDigit()
-                                Image(systemName: award == nil ? "circle" : "trophy.fill")
-                                    .font(.system(size: award == nil ? 9 : 17, weight: .semibold))
-                                    .foregroundStyle(award?.recipe.tint ?? Color.secondary.opacity(0.22))
+                                if let award {
+                                    HydrationArtwork(theme: .flowers, fraction: 1, phase: 0, recipe: award.recipe)
+                                        .frame(width: 28, height: 28)
+                                        .accessibilityHidden(true)
+                                } else {
+                                    Image(systemName: "circle")
+                                        .font(.system(size: 9, weight: .semibold))
+                                        .foregroundStyle(Color.secondary.opacity(0.22))
+                                        .frame(height: 28)
+                                }
                             }
                             .frame(maxWidth: .infinity).frame(height: 48)
                             .background(calendar.isDate(day, inSameDayAs: selection) ? Color.accentColor.opacity(0.10) : .clear,
