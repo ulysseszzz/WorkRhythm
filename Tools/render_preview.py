@@ -9,7 +9,8 @@ import tempfile
 
 root = pathlib.Path(__file__).resolve().parents[1]
 output = sys.argv[1] if len(sys.argv) > 1 else "/private/var/tmp/WorkRhythm-ui-1.7"
-(pathlib.Path(output) / "result.txt").unlink(missing_ok=True)
+for name in ["result.txt", "interaction-result.txt", "accessibility-tree.txt"]:
+    (pathlib.Path(output) / name).unlink(missing_ok=True)
 for name in ["WorkRhythm-preview-runtime.log", "WorkRhythm-preview-runtime-error.log"]:
     pathlib.Path("/private/var/tmp", name).write_text("")
 bundle = pathlib.Path("/private/var/tmp/WorkRhythmPreview.app")

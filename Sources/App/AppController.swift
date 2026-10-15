@@ -58,6 +58,7 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
     private var summaryCache: [Date: DailySummary] = [:]
     private let timelineCache = DayTimelineCache(capacity: 4)
     private var cachedEvents: (version: UInt64, rows: [SystemEvent])?
+    private var cachedScreenDays: [Date: (version: UInt64, rows: [SystemEvent])] = [:]
     private let bootID: String
     private let logger = Logger(subsystem: "local.workrhythm.app", category: "events")
     var statusChanged: (() -> Void)?
@@ -89,6 +90,19 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
         return rows
     }
     func refreshEvents() { cachedEvents = nil; revision += 1 }
+    func screenRecords(_ day: Date) -> [ScreenRecord] {
+        guard let range = Calendar.current.dateInterval(of: .day, for: day) else { return [] }
+        let rows: [SystemEvent]
+        if let cached = cachedScreenDays[range.start], cached.version == repository.eventRevision {
+            rows = cached.rows
+        } else {
+            guard let result = try? repository.events(in: range) else { return [] }
+            rows = result
+            if cachedScreenDays.count >= 4 { cachedScreenDays.removeAll(keepingCapacity: true) }
+            cachedScreenDays[range.start] = (repository.eventRevision, rows)
+        }
+        return ActivityRecords.screens(rows, day: day, now: now)
+    }
     func timeline(_ day: Date) -> DayTimelineSnapshot {
         timelineCache.snapshot(day: day, now: now, version: ledger.timelineRevision) {
             (sessions: sessions, focuses: focuses)
@@ -120,7 +134,7 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
         configureNotifications()
     }
     func start() {
-        log("app_start", "version=1.1.0 schema=2; garden trophy calendar")
+        log("app_start", "version=1.1.0 build=14 schema=2; garden overview and activity records")
         monitor.start()
         startHeartbeat()
         checkpoint()

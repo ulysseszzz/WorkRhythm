@@ -115,7 +115,7 @@ struct MenuContent: View {
     var availableHeight: CGFloat = 440
     @ViewState private var showReminder = false
     var body: some View {
-        menuBody.frame(width: 300, height: availableHeight)
+        menuBody.frame(width: 340, height: availableHeight)
     }
     var menuBody: some View {
         VStack(alignment: .leading, spacing: 5) {
@@ -126,12 +126,12 @@ struct MenuContent: View {
             }
             if availableHeight >= 440 {
             let today = app.today
-            HStack(alignment: .top) {
-                summary("Work", DurationText.short(today.work))
+            HStack(alignment: .firstTextBaseline) {
+                summary("工位", DurationText.short(today.work))
                 Spacer()
-                summary("Focus", DurationText.short(today.focus))
+                summary("专注", DurationText.short(today.focus))
                 Spacer()
-                summary("Away · \(today.breaks)", DurationText.short(today.away))
+                summary("离开", DurationText.short(today.away))
             }
             }
             HStack {
@@ -150,22 +150,25 @@ struct MenuContent: View {
                                 compact: availableHeight < 440,
                                 onRecord: { app.recordSliderDrink($0, amountML: $1) },
                                 onUndo: { app.undoLastDrink() }, onSettings: { app.openPage?("settings") },
-                                onTheme: { theme in app.updateWaterPlan { $0.themeID = theme.rawValue } })
+                                onTheme: { theme in app.updateWaterPlan { $0.themeID = theme.rawValue } },
+                                onHistory: { app.openPage?("history") })
+            RecentActivityCard(app: app, compact: availableHeight < 440)
             Spacer(minLength: 0)
             Divider()
             HStack {
                 Button("时间线") { app.openPage?("timeline") }
-                Button("统计") { app.openPage?("history") }
+                Button("花历与统计") { app.openPage?("history") }
                 Button("设置") { app.openPage?("settings") }
                 Spacer()
                 Button("退出") { NSApp.terminate(nil) }
-            }.font(.caption)
+            }.font(.caption).buttonStyle(.plain).padding(.vertical, 3)
         }.controlSize(.small).padding(10)
     }
     private func summary(_ name: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(name).font(.caption).foregroundStyle(.secondary)
-            Text(value).font(.system(.body, design: .rounded).weight(.semibold)).monospacedDigit()
+        HStack(spacing: 4) {
+            Text(name).font(.system(size: 10)).foregroundStyle(.secondary)
+            Text(value).font(.system(size: 11, weight: .semibold, design: .rounded)).monospacedDigit()
+                .lineLimit(1).minimumScaleFactor(0.8)
         }
     }
 }
@@ -186,13 +189,17 @@ struct CompactFocusControls: View {
             Menu { Button("结束本次专注") { app.endFocus() } } label: { Image(systemName: "ellipsis") }
                 .fixedSize()
         } else {
-            Button("专注 25 分钟") { app.startFocus(25) }.disabled(!app.state.atDesk)
+            Button { app.startFocus(25) } label: {
+                Label("专注 25 分钟", systemImage: "scope")
+                    .padding(.horizontal, 9).padding(.vertical, 4)
+                    .background(Color.teal.opacity(0.09), in: Capsule())
+            }.buttonStyle(.plain).disabled(!app.state.atDesk)
             Menu("更多") {
                 ForEach([45, 60, 90], id: \.self) { minutes in
                     Button("\(minutes) 分钟") { app.startFocus(Double(minutes)) }
                 }
                 Button("自定义 \(Int(app.settings.customFocusMinutes)) 分钟") { app.startFocus(app.settings.customFocusMinutes) }
-            }.disabled(!app.state.atDesk).fixedSize()
+            }.menuStyle(.borderlessButton).disabled(!app.state.atDesk).fixedSize()
         }
     }
 }
@@ -206,6 +213,7 @@ struct MainView: View {
         NavigationSplitView {
             List(selection: $navigation.page) {
                 Label("今日", systemImage: "sun.max").tag("today")
+                Label("饮水与屏幕", systemImage: "clock").tag("records")
                 Label("时间线", systemImage: "list.bullet.indent").tag("timeline")
                 Label("长期统计", systemImage: "chart.bar.xaxis").tag("history")
                 Label("设置", systemImage: "slider.horizontal.3").tag("settings")
@@ -225,6 +233,7 @@ struct MainView: View {
                     Text(app.errorMessage).foregroundStyle(.red).padding().frame(maxWidth: .infinity).background(.red.opacity(0.08))
                 }
                 switch navigation.page {
+                case "records": ActivityRecordsPage(app: app)
                 case "timeline": TimelinePage(app: app)
                 case "history": HistoryPage(app: app)
                 case "settings": SettingsPage(app: app)
@@ -259,10 +268,19 @@ struct DashboardPage: View {
                     }.padding().frame(maxWidth: .infinity, alignment: .leading).background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
                 }
                 ReminderBanner(app: app)
-                HydrationBottleCard(progress: app.waterProgress, feedback: app.hydrationFeedback,
+                HStack(alignment: .top, spacing: 18) {
+                    HydrationBottleCard(progress: app.waterProgress, feedback: app.hydrationFeedback,
                                     onRecord: { app.recordSliderDrink($0, amountML: $1) },
                                     onUndo: { app.undoLastDrink() }, onSettings: { app.openPage?("settings") },
-                                    onTheme: { theme in app.updateWaterPlan { $0.themeID = theme.rawValue } })
+                                    onTheme: { theme in app.updateWaterPlan { $0.themeID = theme.rawValue } },
+                                    onHistory: { app.openPage?("history") }, spacious: true)
+                    VStack(alignment: .leading, spacing: 18) {
+                        RecentActivityCard(app: app)
+                        Divider()
+                        FocusControls(app: app)
+                    }.padding(16).frame(width: 230)
+                        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 14))
+                }
                 let s = app.today
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 170))], spacing: 12) {
                     MetricCard(title: "在工位 · 含阅读静默", value: DurationText.short(s.work), color: .teal)
@@ -286,9 +304,6 @@ struct DashboardPage: View {
                     Spacer()
                     Text("最后离开 \(clock(s.lastLeave))")
                 }.font(.callout).foregroundStyle(.secondary)
-                GroupBox {
-                    FocusControls(app: app).frame(maxWidth: .infinity, alignment: .leading).padding(8)
-                }
                 Text("在工位是行为推断，包含 Idle；Focus 是它的子集。合盖表示可能移动，无法证明物理位置变化。未观测、锁屏和设备睡眠不算在工位。")
                     .font(.caption).foregroundStyle(.secondary)
             }.padding(28)

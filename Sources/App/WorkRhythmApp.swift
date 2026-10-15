@@ -64,7 +64,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             if let controller {
                 popover.contentViewController = NSHostingController(rootView: MenuContent(app: controller, availableHeight: height))
             }
-            popover.contentSize = NSSize(width: 300, height: height)
+            popover.contentSize = NSSize(width: 340, height: height)
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         }
     }

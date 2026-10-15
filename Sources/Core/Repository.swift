@@ -83,6 +83,12 @@ public final class Repository {
     public func hydration() throws -> [HydrationEvent] { try read(HydrationEvent.self, table: "hydration") }
     public func gardenTrophies() throws -> [GardenTrophy] { try read(GardenTrophy.self, table: "garden_trophies") }
     public func events(limit: Int = 500) throws -> [SystemEvent] { try read(SystemEvent.self, table: "events", suffix: "ORDER BY start DESC LIMIT \(max(1, limit))") }
+    /// History needs the complete selected day, independently of the diagnostic feed's cap.
+    public func events(in range: DateInterval) throws -> [SystemEvent] {
+        guard range.start.timeIntervalSince1970.isFinite, range.end.timeIntervalSince1970.isFinite else { return [] }
+        return try read(SystemEvent.self, table: "events",
+                        suffix: "WHERE start >= \(range.start.timeIntervalSince1970) AND start < \(range.end.timeIntervalSince1970) ORDER BY start DESC")
+    }
     public func settings() throws -> AppSettings { try read(AppSettings.self, table: "preferences", suffix: "WHERE id='settings'").first ?? AppSettings() }
     public func checkpoint() throws -> Checkpoint? { try read(Checkpoint.self, table: "preferences", suffix: "WHERE id='checkpoint'").first }
     public func pruneEvents(before: Date) throws {

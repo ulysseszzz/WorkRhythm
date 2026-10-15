@@ -19,6 +19,9 @@ struct RenderPreview {
     @MainActor static func run() async throws {
         _ = NSApplication.shared
         NSApp.setActivationPolicy(.accessory)
+        // Materialize SwiftUI's otherwise lazy accessibility tree for local UI checks.
+        NSApp.accessibilitySetValue(true, forAttribute: .init(rawValue: "AXEnhancedUserInterface"))
+        NSApp.accessibilitySetValue(true, forAttribute: .init(rawValue: "AXManualAccessibility"))
         NSApp.activate(ignoringOtherApps: true)
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("WorkRhythm-preview-\(UUID())")
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -51,9 +54,9 @@ struct RenderPreview {
             try png.write(to: output.appendingPathComponent(name + ".png"))
             window.orderOut(nil)
         }
-        func render(_ name: String, height: CGFloat = 520) async throws {
+        func render(_ name: String, height: CGFloat = 440) async throws {
             try await capture(MenuContent(app: app, availableHeight: height).background(Color(nsColor: .windowBackgroundColor)),
-                        size: NSSize(width: 300, height: height), name: name)
+                        size: NSSize(width: 340, height: height), name: name)
         }
         for theme in HydrationTheme.allCases {
             app.updateWaterPlan { $0.themeID = theme.rawValue }
@@ -93,7 +96,7 @@ struct RenderPreview {
         }.padding(24).background(Color(nsColor: .windowBackgroundColor))
         try await capture(gallery, size: NSSize(width: 460, height: 680), name: "themes")
         try await capture(MenuContent(app: app).background(Color(nsColor: .windowBackgroundColor)),
-                    size: NSSize(width: 300, height: 520), name: "menu-dark", dark: true)
+                    size: NSSize(width: 340, height: 440), name: "menu-dark", dark: true)
         // Verify native window and scroll visibility with the same probe used by animation.
         let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 100, height: 136))
         let document = NSView(frame: NSRect(x: 0, y: 0, width: 100, height: 500))
@@ -300,19 +303,19 @@ struct RenderPreview {
         precondition(restored.waterProgress.garden == fresh.waterProgress.garden)
         fresh.updateWaterPlan { $0.themeID = "flowers" }
         try await capture(MenuContent(app: fresh).background(Color(nsColor: .windowBackgroundColor)),
-                          size: NSSize(width: 300, height: 440), name: "menu-latte")
+                          size: NSSize(width: 340, height: 440), name: "menu-latte")
         fresh.undoLastDrink()
         precondition(fresh.waterProgress.garden.recipe == .sunshine)
         fresh.updateWaterPlan { $0.themeID = "bottle" }
         try await capture(MenuContent(app: fresh, availableHeight: 380).background(Color(nsColor: .windowBackgroundColor)),
-                          size: NSSize(width: 300, height: 380), name: "menu-coffee-small")
+                          size: NSSize(width: 340, height: 380), name: "menu-coffee-small")
         fresh.startFocus(25)
         fresh.pendingReminder = "water"
         try await capture(MenuContent(app: fresh, availableHeight: 380).background(Color(nsColor: .windowBackgroundColor)),
-                          size: NSSize(width: 300, height: 380), name: "menu-focus-reminder-small")
+                          size: NSSize(width: 340, height: 380), name: "menu-focus-reminder-small")
         fresh.pauseFocus()
         try await capture(MenuContent(app: fresh).background(Color(nsColor: .windowBackgroundColor)),
-                          size: NSSize(width: 300, height: 440), name: "menu-paused-dark", dark: true)
+                          size: NSSize(width: 340, height: 440), name: "menu-paused-dark", dark: true)
         fresh.endFocus()
         try await capture(RecipeCatalog(garden: drinks.waterProgress.garden).background(Color(nsColor: .windowBackgroundColor)),
                           size: NSSize(width: 402, height: 470), name: "recipe-catalog")
@@ -342,7 +345,7 @@ struct RenderPreview {
         sliderApp.updateWaterPlan { $0.themeID = "flowers" }
         for height: CGFloat in [380, 440] {
             let natural = NSHostingView(rootView: MenuContent(app: sliderApp, availableHeight: height)
-                .menuBody.frame(width: 300).fixedSize(horizontal: false, vertical: true))
+                .menuBody.frame(width: 340).fixedSize(horizontal: false, vertical: true))
             natural.layoutSubtreeIfNeeded()
             let needed = natural.fittingSize.height
             try Data("naturalHeight=\(needed) available=\(height)".utf8)
@@ -350,17 +353,127 @@ struct RenderPreview {
             precondition(needed <= height, "Unconstrained menu contents must fit: \(needed) > \(height)")
         }
         try await capture(MenuContent(app: sliderApp).background(Color(nsColor: .windowBackgroundColor)),
-                          size: NSSize(width: 300, height: 440), name: "menu-six-drinks")
+                          size: NSSize(width: 340, height: 440), name: "menu-six-drinks")
         try await capture(MenuContent(app: sliderApp, availableHeight: 380).background(Color(nsColor: .windowBackgroundColor)),
-                          size: NSSize(width: 300, height: 380), name: "menu-slider-small")
+                          size: NSSize(width: 340, height: 380), name: "menu-slider-small")
         try await capture(MenuContent(app: sliderApp).background(Color(nsColor: .windowBackgroundColor)),
-                          size: NSSize(width: 300, height: 440), name: "menu-slider-dark", dark: true)
+                          size: NSSize(width: 340, height: 440), name: "menu-slider-dark", dark: true)
         let reopenedSlider = try AppController(dataDirectory: directory.appendingPathComponent("slider"))
         precondition(reopenedSlider.settings.waterPlan.selectedDrink == .milk)
         precondition(reopenedSlider.settings.waterPlan.servingML(for: .milk) == 600)
         precondition(reopenedSlider.waterProgress.garden.recipe == .matcha)
         sliderApp.undoLastDrink()
         precondition(sliderApp.waterProgress.totalML == 150 && sliderApp.waterProgress.garden.recipe == .teaBell)
+        for (offset, metadata) in [(-3600.0, "lockObserved(uptime: 12.0, idleSeconds: 0.0, stillInCorner: true)"),
+                                   (-3500.0, "displaySleep(uptime: 13.0, idleSeconds: 0.0, stillInCorner: true)"),
+                                   (-1800.0, "displayWake"), (-1799.0, "unlock")] {
+            sliderApp.log("system_event", metadata, at: sliderApp.now.addingTimeInterval(offset))
+        }
+        sliderApp.recordSliderDrink(.coffee, amountML: 600)
+        sliderApp.recordSliderDrink(.milkTea, amountML: 600)
+        sliderApp.recordSliderDrink(.waterBottle, amountML: 300)
+        try await render("menu-empty-screen-events")
+        try await capture(MenuContent(app: sliderApp).background(Color(nsColor: .windowBackgroundColor)),
+                          size: NSSize(width: 340, height: 440), name: "menu-records")
+        try await capture(MenuContent(app: sliderApp).background(Color(nsColor: .windowBackgroundColor)),
+                          size: NSSize(width: 340, height: 440), name: "menu-records-dark", dark: true)
+        try await capture(MenuContent(app: sliderApp, availableHeight: 380).background(Color(nsColor: .windowBackgroundColor)),
+                          size: NSSize(width: 340, height: 380), name: "menu-records-short")
+        try await capture(DrinkComposer(plan: sliderApp.settings.waterPlan, tint: .teal, onRecord: { _, _ in })
+                            .background(Color(nsColor: .windowBackgroundColor)),
+                          size: NSSize(width: 312, height: 245), name: "drink-composer")
+        try await capture(ActivityRecordsPage(app: sliderApp).background(Color(nsColor: .windowBackgroundColor)),
+                          size: NSSize(width: 770, height: 680), name: "records")
+        try await capture(ActivityRecordsPage(app: sliderApp).background(Color(nsColor: .windowBackgroundColor)),
+                          size: NSSize(width: 650, height: 680), name: "records-dark-narrow", dark: true)
+        try await capture(DashboardPage(app: sliderApp).background(Color(nsColor: .windowBackgroundColor)),
+                          size: NSSize(width: 770, height: 740), name: "dashboard-records")
+        try await capture(DashboardPage(app: sliderApp).background(Color(nsColor: .windowBackgroundColor)),
+                          size: NSSize(width: 635, height: 740), name: "dashboard-narrow")
+        // Exercise actual SwiftUI accessibility actions in the isolated preview process.
+        // No Accessibility permission or personal app interaction is needed.
+        let interactionApp = try AppController(dataDirectory: directory.appendingPathComponent("interaction"))
+        interactionApp.state = .active
+        interactionApp.updateWaterPlan { $0.setServingML(300, for: .waterBottle) }
+        var openedPage = ""
+        interactionApp.openPage = { openedPage = $0 }
+        let interactionHost = NSHostingView(rootView: MenuContent(app: interactionApp))
+        let interactionWindow = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 340, height: 440),
+                                          styleMask: [.borderless], backing: .buffered, defer: false)
+        interactionWindow.contentView = interactionHost
+        interactionWindow.center()
+        interactionWindow.makeKeyAndOrderFront(nil)
+        func accessibilityTree(_ node: Any, depth: Int = 0) -> [NSObject] {
+            guard depth < 24, let element = node as? NSObject else { return [] }
+            // SwiftUI's virtual children use the informal accessibility bridge.
+            let children = (element as? NSAccessibilityProtocol)?.accessibilityChildren()
+                ?? (element.accessibilityAttributeValue(.children) as? [Any]) ?? []
+            return [element] + children.flatMap { accessibilityTree($0, depth: depth + 1) }
+        }
+        func axLabel(_ element: NSObject) -> String {
+            (element as? NSAccessibilityProtocol)?.accessibilityLabel()
+                ?? axString(element, selector: "accessibilityLabel")
+                ?? (element.accessibilityAttributeValue(.init(rawValue: "AXDescription")) as? String)
+                ?? (element.accessibilityAttributeValue(.title) as? String) ?? ""
+        }
+        func axRole(_ element: NSObject) -> String {
+            (element as? NSAccessibilityProtocol)?.accessibilityRole()?.rawValue
+                ?? axString(element, selector: "accessibilityRole")
+                ?? (element.accessibilityAttributeValue(.role) as? String) ?? ""
+        }
+        func axString(_ element: NSObject, selector: String) -> String? {
+            let action = NSSelectorFromString(selector)
+            guard element.responds(to: action) else { return nil }
+            return element.perform(action)?.takeUnretainedValue() as? String
+        }
+        func press(_ label: String, exact: Bool = true) async throws {
+            try await Task.sleep(for: .seconds(0.15))
+            let nodes = NSApp.windows.filter(\.isVisible).flatMap { accessibilityTree($0) }
+            let match = nodes.first {
+                let title = axLabel($0)
+                return axRole($0) == "AXButton" && (exact ? title == label : title.contains(label))
+            }
+            guard let match else {
+                let dump = nodes.map { "\(type(of: $0)) | \(axRole($0)) | \(axLabel($0))" }.joined(separator: "\n")
+                try dump.write(to: output.appendingPathComponent("accessibility-tree.txt"), atomically: true, encoding: .utf8)
+                throw NSError(domain: "PreviewAction", code: 1, userInfo: [NSLocalizedDescriptionKey: "Cannot press \(label)"])
+            }
+            let action = NSSelectorFromString("accessibilityPerformPress")
+            if let element = match as? NSAccessibilityProtocol { precondition(element.accessibilityPerformPress()) }
+            else if match.responds(to: action) {
+                typealias PressAction = @convention(c) (AnyObject, Selector) -> Bool
+                let perform = unsafeBitCast(match.method(for: action), to: PressAction.self)
+                precondition(perform(match, action))
+            } else { match.accessibilityPerformAction(.press) }
+            try await Task.sleep(for: .seconds(0.1))
+        }
+        try await press("水 · 300 mL", exact: false)
+        try await press("选择咖啡，不记录")
+        try await press("选择 600 毫升")
+        precondition(interactionApp.water.isEmpty, "Selection must not record")
+        try await press("记录咖啡 · 600 mL")
+        precondition(interactionApp.waterProgress.totalML == 600 && interactionApp.waterProgress.count == 1)
+        precondition(interactionApp.settings.waterPlan.selectedDrink == .coffee)
+        try await press("记录咖啡 600 毫升")
+        precondition(interactionApp.waterProgress.totalML == 1200 && interactionApp.waterProgress.count == 2)
+        try await press("撤销")
+        precondition(interactionApp.waterProgress.totalML == 600 && interactionApp.waterProgress.count == 1)
+        try await press("花历")
+        precondition(openedPage == "history")
+        try await press("全部", exact: false)
+        precondition(openedPage == "records")
+        interactionWindow.orderOut(nil)
+        sliderApp.startFocus(25)
+        sliderApp.pendingReminder = "water"
+        sliderApp.errorMessage = "preview error"
+        for height: CGFloat in [380, 440] {
+            let natural = NSHostingView(rootView: MenuContent(app: sliderApp, availableHeight: height)
+                .menuBody.frame(width: 340).fixedSize(horizontal: false, vertical: true))
+            natural.layoutSubtreeIfNeeded()
+            precondition(natural.fittingSize.height <= height, "Dense menu + focus + reminder must fit")
+        }
+        try "PASS: native chooser, select without saving, confirm once, remembered quick record, undo, flower calendar and full records navigation; dense layout with focus/reminder/error."
+            .write(to: output.appendingPathComponent("interaction-result.txt"), atomically: true, encoding: .utf8)
         try Data("PASS: garden trophy persistence and four-day calendar in light/dark; six drinks, four-stop slider, invalid/off-grid rejected, tea150 milk600 persisted, matcha undo/restart, twelve recipe artwork previews; main menu no NSScrollView and natural contents fit 440/380pt; legacy timeline/cache/hydration regression. Live animation/visibility: \(canCheckLiveAnimation ? "PASS" : "SKIPPED (window occluded)")".utf8)
             .write(to: output.appendingPathComponent("result.txt"))
         NSApp.terminate(nil)

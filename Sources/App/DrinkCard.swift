@@ -12,61 +12,138 @@ struct HydrationBottleCard: View {
     var onUndo: () -> Void
     var onSettings: () -> Void
     var onTheme: (HydrationTheme) -> Void = { _ in }
-    @ViewState private var selection: DrinkPreset = .waterBottle
-    @ViewState private var amount = 300.0
+    var onHistory: () -> Void = {}
+    var spacious = false
+    @ViewState private var showComposer = false
     @ViewState private var showRecipes = false
     private var recipe: GardenRecipe { progress.garden.recipe }
-    private var selectedML: Int { DrinkAmount.sliderValue(Int(amount)) }
+    private var selection: DrinkPreset { progress.plan.selectedDrink }
+    private var selectedML: Int { DrinkAmount.sliderValue(progress.plan.servingML(for: selection)) }
     var body: some View {
-        VStack(spacing: 3) {
+        VStack(spacing: 6) {
             HStack {
-                ForEach(HydrationTheme.allCases, id: \.self) { theme in
-                    Button { onTheme(theme) } label: {
-                        Label(theme.title, systemImage: theme.symbol)
-                            .font(.system(size: 11, weight: .medium)).padding(.vertical, 2).padding(.horizontal, 7)
-                            .background(progress.plan.theme == theme ? recipe.tint.opacity(0.15) : .clear,
-                                        in: Capsule())
-                    }.buttonStyle(.plain)
-                        .accessibilityAddTraits(progress.plan.theme == theme ? [.isSelected] : [])
+                Text("今日花园").font(.system(size: 11, weight: .semibold))
+                Spacer()
+                Button(action: onHistory) {
+                    Label("花历", systemImage: "calendar")
                 }
-                Spacer(minLength: 0)
-                Button("配方图鉴") { showRecipes = true }.font(.system(size: 11)).buttonStyle(.plain).foregroundStyle(.secondary)
+                .help("查看每天开出的花和奖杯")
+                Button("图鉴") { showRecipes = true }
                     .popover(isPresented: $showRecipes) { RecipeCatalog(garden: progress.garden) }
-            }
-            HStack(spacing: 10) {
-                HydrationScene(theme: progress.plan.theme, fraction: progress.fraction,
-                                   motionEnabled: progress.plan.motionEnabled, recipe: recipe)
-                        .frame(width: compact ? 38 : 46, height: compact ? 46 : 60)
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text("\(progress.totalML)").font(.system(size: compact ? 23 : 27, weight: .semibold, design: .rounded))
-                        Text("/ \(progress.plan.targetML) mL").font(.system(size: 10)).foregroundStyle(.secondary)
-                    }
-                    HStack(spacing: 4) {
-                        Text(progress.garden.hasDrinks ? recipe.title : "今天的花园，等你来浇灌")
-                        if progress.completed {
-                            Image(systemName: "trophy.fill").accessibilityLabel("今日已获得开花奖杯")
+                Menu {
+                    ForEach(HydrationTheme.allCases, id: \.self) { theme in
+                        Button { onTheme(theme) } label: {
+                            Label(theme.title, systemImage: progress.plan.theme == theme ? "checkmark" : theme.symbol)
                         }
                     }
-                    .font(.system(size: 11, weight: .medium)).foregroundStyle(recipe.tint)
-                    HStack {
-                        Text("\(progress.count) 次 · \(Int(progress.fraction * 100))%").font(.system(size: 10)).foregroundStyle(.secondary)
-                        Spacer(minLength: 0)
-                        Button("计划", action: onSettings).buttonStyle(.plain).font(.system(size: 10)).foregroundStyle(.secondary)
+                    Divider()
+                    Button("饮水计划", action: onSettings)
+                } label: { Image(systemName: "ellipsis") }
+                    .menuStyle(.borderlessButton).fixedSize().help("切换花园 / 水瓶，调整饮水计划")
+            }.font(.system(size: 11)).buttonStyle(.plain).foregroundStyle(.secondary)
+            HStack(spacing: spacious ? 16 : 12) {
+                ZStack {
+                    Circle().fill(recipe.tint.opacity(0.07))
+                        .frame(width: spacious ? 154 : 102, height: spacious ? 154 : 102)
+                    HydrationScene(theme: progress.plan.theme, fraction: progress.fraction,
+                                   motionEnabled: progress.plan.motionEnabled, recipe: recipe)
+                        .frame(width: spacious ? 154 : compact ? 86 : 98,
+                               height: spacious ? 184 : compact ? 100 : 116)
+                }.frame(width: spacious ? 158 : 114, height: spacious ? 184 : compact ? 100 : 116)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(progress.garden.hasDrinks ? recipe.title : "等你来浇灌")
+                        .font(.system(size: spacious ? 19 : 14, weight: .semibold)).foregroundStyle(recipe.tint)
+                        .lineLimit(1).minimumScaleFactor(0.85)
+                    HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        Text("\(progress.totalML)").font(.system(size: spacious ? 34 : 25, weight: .semibold, design: .rounded))
+                            .lineLimit(1).minimumScaleFactor(0.65)
+                        Text("mL").font(.system(size: 10)).foregroundStyle(.secondary)
                     }
+                    GeometryReader { geometry in
+                        Capsule().fill(recipe.tint.opacity(0.13))
+                        Capsule().fill(recipe.tint.gradient)
+                            .frame(width: geometry.size.width * progress.fraction)
+                    }.frame(height: 4).padding(.vertical, 2)
+                        .accessibilityLabel("今日饮水目标完成度")
+                        .accessibilityValue("\(Int(progress.fraction * 100))%")
+                    Text("目标 \(progress.plan.targetML) · \(Int(progress.fraction * 100))%")
+                        .font(.system(size: 10)).foregroundStyle(.secondary).monospacedDigit()
+                    Text(progress.completed ? "今日已达标 · 花开留念" : "再饮 \(max(0, progress.plan.targetML - progress.totalML)) mL 达标")
+                        .font(.system(size: 10)).foregroundStyle(recipe.tint)
                 }.frame(maxWidth: .infinity, alignment: .leading)
             }
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 4), count: 3), spacing: 4) {
-                ForEach(DrinkPreset.displayOrder, id: \.self) { drink in
-                    Button {
-                        selection = drink
-                    } label: {
-                        Text(drink.shortTitle).font(.system(size: 11, weight: selection == drink ? .semibold : .regular))
-                            .frame(maxWidth: .infinity).padding(.vertical, 4)
-                            .background(selection == drink ? recipe.tint.opacity(0.20) : Color.primary.opacity(0.035),
-                                        in: RoundedRectangle(cornerRadius: 6))
-                    }.buttonStyle(.plain).accessibilityLabel("选择\(drink.shortTitle)，不记录")
-                        .accessibilityAddTraits(selection == drink ? [.isSelected] : [])
+            HStack(spacing: 6) {
+                Button { showComposer = true } label: {
+                    HStack(spacing: 5) {
+                        Text("\(selection.shortTitle) · \(selectedML) mL")
+                        Image(systemName: "chevron.down").font(.system(size: 8, weight: .bold))
+                    }
+                    .frame(maxWidth: .infinity).frame(height: 28)
+                    .background(Color.primary.opacity(0.05), in: RoundedRectangle(cornerRadius: 8))
+                }.buttonStyle(.plain).help("更换饮品和容量")
+                    .popover(isPresented: $showComposer, arrowEdge: .bottom) {
+                        DrinkComposer(plan: progress.plan, tint: recipe.tint) { drink, ml in
+                            onRecord(drink, ml)
+                            showComposer = false
+                        }
+                    }
+                Button { onRecord(selection, selectedML) } label: {
+                    Label("记录", systemImage: "plus").frame(width: 70, height: 28)
+                        .foregroundStyle(.white)
+                        .background(recipe.tint.gradient, in: RoundedRectangle(cornerRadius: 8))
+                }.buttonStyle(.plain).accessibilityLabel("记录\(selection.shortTitle) \(selectedML) 毫升")
+            }.font(.system(size: 12, weight: .medium))
+            HStack(spacing: 4) {
+                Text(feedback.isEmpty ? "今日 \(progress.count) 次饮用" : feedback)
+                    .lineLimit(1).help(feedback)
+                Spacer(minLength: 0)
+                Button("撤销", action: onUndo).buttonStyle(.plain).disabled(progress.lastEntry == nil)
+                    .help("撤销今天最近一次饮用")
+            }.font(.system(size: 10)).foregroundStyle(.secondary)
+        }
+        .padding(10)
+        .background {
+            RoundedRectangle(cornerRadius: 15)
+                .fill(LinearGradient(colors: [recipe.tint.opacity(0.12), recipe.tint.opacity(0.025)],
+                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+        }
+        .overlay(RoundedRectangle(cornerRadius: 15).strokeBorder(recipe.tint.opacity(0.12), lineWidth: 0.5))
+    }
+}
+
+/// Editing lives in a separate popover; choosing a drink never writes an event.
+struct DrinkComposer: View {
+    let plan: HydrationPlan
+    let tint: Color
+    var onRecord: (DrinkPreset, Int) -> Void
+    @ViewState private var selection: DrinkPreset
+    @ViewState private var amount: Double
+    init(plan: HydrationPlan, tint: Color, onRecord: @escaping (DrinkPreset, Int) -> Void) {
+        self.plan = plan; self.tint = tint; self.onRecord = onRecord
+        _selection = ViewState(initialValue: plan.selectedDrink)
+        _amount = ViewState(initialValue: Double(DrinkAmount.sliderValue(plan.servingML(for: plan.selectedDrink))))
+    }
+    private var selectedML: Int { DrinkAmount.sliderValue(Int(amount)) }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("记一杯").font(.headline)
+                Spacer()
+                Text("选择后确认记录").font(.caption).foregroundStyle(.secondary)
+            }
+            Grid(horizontalSpacing: 4, verticalSpacing: 4) {
+                ForEach(0..<2) { row in
+                    GridRow {
+                        ForEach(Array(DrinkPreset.displayOrder[(row * 3)..<(row * 3 + 3)]), id: \.self) { drink in
+                            Button { selection = drink } label: {
+                                Text(drink.shortTitle).font(.system(size: 11, weight: selection == drink ? .semibold : .regular))
+                                    .frame(maxWidth: .infinity).padding(.vertical, 8)
+                                    .background(selection == drink ? tint.opacity(0.20) : Color.primary.opacity(0.035),
+                                                in: RoundedRectangle(cornerRadius: 6))
+                            }.buttonStyle(.plain).accessibilityLabel("选择\(drink.shortTitle)，不记录")
+                                .accessibilityAddTraits(selection == drink ? [.isSelected] : [])
+                        }
+                    }
                 }
             }
             VStack(spacing: 2) {
@@ -76,47 +153,23 @@ struct HydrationBottleCard: View {
                     Text("\(selectedML) mL").font(.system(size: 12, weight: .semibold)).monospacedDigit()
                 }
                 Slider(value: $amount, in: 150...600, step: 150)
-                    .tint(recipe.tint).accessibilityLabel("饮用量，每档150毫升")
+                    .tint(tint).accessibilityLabel("饮用量，每档150毫升")
                     .accessibilityValue("\(selectedML) 毫升")
                 HStack(spacing: 0) {
                     ForEach(DrinkAmount.steps, id: \.self) { ml in
                         Button("\(ml)") { amount = Double(ml) }
                             .buttonStyle(.plain).font(.system(size: 10, weight: selectedML == ml ? .bold : .regular))
-                            .foregroundStyle(selectedML == ml ? recipe.tint : .secondary)
+                            .foregroundStyle(selectedML == ml ? tint : .secondary)
                             .frame(maxWidth: .infinity)
                             .accessibilityLabel("选择 \(ml) 毫升")
                     }
                 }
             }
-                Button {
-                    record()
-                } label: {
-                    Text("记录\(selection.shortTitle) · \(selectedML) mL").font(.system(size: 12, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                }.buttonStyle(.borderedProminent).tint(recipe.tint)
-                    .accessibilityLabel("记录\(selection.shortTitle) \(selectedML) 毫升")
-            HStack(spacing: 4) {
-                Text(status).font(.system(size: 10)).foregroundStyle(.secondary)
-                    .lineLimit(1).help(status)
-                Spacer(minLength: 0)
-                Button("撤销", action: onUndo).font(.system(size: 10)).buttonStyle(.plain)
-                    .disabled(progress.lastEntry == nil)
-            }
-        }
-        .padding(compact ? 9 : 11)
-        .background(recipe.tint.opacity(0.055), in: RoundedRectangle(cornerRadius: 13))
-        .onAppear {
-            selection = progress.plan.selectedDrink
-            amount = Double(DrinkAmount.sliderValue(progress.plan.servingML(for: selection)))
-        }
-    }
-    private var status: String {
-        if !feedback.isEmpty { return feedback }
-        if let last = progress.lastEntry, let ml = last.amountML { return "上次：\(last.drinkTitle) \(ml) mL" }
-        return "滑动或点刻度选择，点击记录"
-    }
-    private func record() {
-        onRecord(selection, selectedML)
+            Button { onRecord(selection, selectedML) } label: {
+                Text("记录\(selection.shortTitle) · \(selectedML) mL")
+                    .frame(maxWidth: .infinity).padding(.vertical, 3)
+            }.buttonStyle(.borderedProminent).tint(tint)
+        }.padding(16).frame(width: 280)
     }
 }
 
