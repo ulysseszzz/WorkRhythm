@@ -163,7 +163,15 @@ struct MenuContent: View {
                 Spacer()
                 Button("退出") { NSApp.terminate(nil) }
             }.font(.caption).buttonStyle(.plain).padding(.vertical, 3)
-        }.controlSize(.small).padding(10)
+        }
+        .controlSize(.small)
+        .padding(10)
+        .background {
+            ZStack {
+                Color(nsColor: .windowBackgroundColor)
+                app.waterProgress.garden.recipe.tint.opacity(0.04)
+            }
+        }
     }
     private func summary(_ name: String, _ value: String) -> some View {
         HStack(spacing: 4) {
@@ -190,17 +198,25 @@ struct CompactFocusControls: View {
             Menu { Button("结束本次专注") { app.endFocus() } } label: { Image(systemName: "ellipsis") }
                 .fixedSize()
         } else {
-            Button { app.startFocus(25) } label: {
-                Label("专注 25 分钟", systemImage: "scope")
-                    .padding(.horizontal, 9).padding(.vertical, 4)
-                    .background(Color.teal.opacity(0.09), in: Capsule())
-            }.buttonStyle(.plain).disabled(!app.state.atDesk)
-            Menu("更多") {
-                ForEach([45, 60, 90], id: \.self) { minutes in
-                    Button("\(minutes) 分钟") { app.startFocus(Double(minutes)) }
+            HStack(spacing: 4) {
+                Label("专注", systemImage: "scope")
+                    .font(.system(size: 10)).foregroundStyle(.secondary)
+                ForEach([25, 30, 45], id: \.self) { minutes in
+                    Button("\(minutes)分") { app.startFocus(Double(minutes)) }
+                        .padding(.horizontal, 7).padding(.vertical, 4)
+                        .background(Color.teal.opacity(0.09), in: RoundedRectangle(cornerRadius: 6))
                 }
-                Button("自定义 \(Int(app.settings.customFocusMinutes)) 分钟") { app.startFocus(app.settings.customFocusMinutes) }
-            }.menuStyle(.borderlessButton).disabled(!app.state.atDesk).fixedSize()
+                Menu("更多") {
+                    ForEach([60, 90], id: \.self) { minutes in
+                        Button("\(minutes) 分钟") { app.startFocus(Double(minutes)) }
+                    }
+                    Button("自定义 \(Int(app.settings.customFocusMinutes)) 分钟") {
+                        app.startFocus(app.settings.customFocusMinutes)
+                    }
+                }.menuStyle(.borderlessButton).fixedSize()
+            }
+            .buttonStyle(.plain)
+            .disabled(!app.state.atDesk)
         }
     }
 }
