@@ -18,7 +18,7 @@ struct HydrationBottleCard: View {
     @ViewState private var showRecipes = false
     private var recipe: GardenRecipe { progress.garden.recipe }
     private var selection: DrinkPreset { progress.plan.selectedDrink }
-    private var selectedML: Int { DrinkAmount.sliderValue(progress.plan.servingML(for: selection)) }
+    private var selectedML: Int { DrinkAmount.bounded(progress.plan.servingML(for: selection)) }
     var body: some View {
         VStack(spacing: 6) {
             HStack {
@@ -117,17 +117,17 @@ struct DrinkComposer: View {
     let tint: Color
     var onRecord: (DrinkPreset, Int) -> Void
     @ViewState private var selection: DrinkPreset
-    @ViewState private var amount: Double
+    @ViewState private var amount: Int
     init(plan: HydrationPlan, tint: Color, onRecord: @escaping (DrinkPreset, Int) -> Void) {
         self.plan = plan; self.tint = tint; self.onRecord = onRecord
         _selection = ViewState(initialValue: plan.selectedDrink)
-        _amount = ViewState(initialValue: Double(DrinkAmount.sliderValue(plan.servingML(for: plan.selectedDrink))))
+        _amount = ViewState(initialValue: DrinkAmount.bounded(plan.servingML(for: plan.selectedDrink)))
     }
-    private var selectedML: Int { DrinkAmount.sliderValue(Int(amount)) }
+    private var selectedML: Int { DrinkAmount.bounded(amount) }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text("记一杯").font(.headline)
+                Text("记录饮品").font(.headline)
                 Spacer()
                 Text("选择后确认记录").font(.caption).foregroundStyle(.secondary)
             }
@@ -148,28 +148,51 @@ struct DrinkComposer: View {
             }
             VStack(spacing: 2) {
                 HStack {
-                    Text("容量").font(.system(size: 10)).foregroundStyle(.secondary)
+                    Text("常见包装").font(.system(size: 10)).foregroundStyle(.secondary)
                     Spacer()
                     Text("\(selectedML) mL").font(.system(size: 12, weight: .semibold)).monospacedDigit()
                 }
-                Slider(value: $amount, in: 150...600, step: 150)
-                    .tint(tint).accessibilityLabel("饮用量，每档150毫升")
-                    .accessibilityValue("\(selectedML) 毫升")
-                HStack(spacing: 0) {
-                    ForEach(DrinkAmount.steps, id: \.self) { ml in
-                        Button("\(ml)") { amount = Double(ml) }
-                            .buttonStyle(.plain).font(.system(size: 10, weight: selectedML == ml ? .bold : .regular))
-                            .foregroundStyle(selectedML == ml ? tint : .secondary)
-                            .frame(maxWidth: .infinity)
-                            .accessibilityLabel("选择 \(ml) 毫升")
+                Grid(horizontalSpacing: 5, verticalSpacing: 5) {
+                    ForEach(0..<2) { row in
+                        GridRow {
+                            ForEach(Array(selection.servingOptions[(row * 2)..<(row * 2 + 2)]), id: \.self) { option in
+                                Button { amount = option.amountML } label: {
+                                    HStack(spacing: 4) {
+                                        Text("\(option.amountML)").fontWeight(selectedML == option.amountML ? .semibold : .regular)
+                                        Text("mL · \(option.container)").foregroundStyle(.secondary)
+                                    }
+                                    .font(.system(size: 10))
+                                    .frame(maxWidth: .infinity, minHeight: 26)
+                                    .background(selectedML == option.amountML ? tint.opacity(0.18) : Color.primary.opacity(0.035),
+                                                in: RoundedRectangle(cornerRadius: 6))
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("\(option.container) \(option.amountML) 毫升")
+                            }
+                        }
                     }
                 }
+                HStack(spacing: 6) {
+                    Text("实际饮用").font(.system(size: 10)).foregroundStyle(.secondary)
+                    Spacer()
+                    TextField("容量", value: $amount, format: .number)
+                        .textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing)
+                        .frame(width: 58)
+                        .accessibilityLabel("实际饮用毫升数")
+                    Text("mL").font(.system(size: 10)).foregroundStyle(.secondary)
+                    Stepper("", value: $amount, in: DrinkAmount.range, step: 10)
+                        .labelsHidden().fixedSize()
+                }.padding(.top, 4)
             }
             Button { onRecord(selection, selectedML) } label: {
                 Text("记录\(selection.shortTitle) · \(selectedML) mL")
                     .frame(maxWidth: .infinity).padding(.vertical, 3)
             }.buttonStyle(.borderedProminent).tint(tint)
-        }.padding(16).frame(width: 280)
+        }
+        .padding(16).frame(width: 300)
+        .onChange(of: selection) { _, drink in
+            amount = DrinkAmount.bounded(plan.servingML(for: drink))
+        }
     }
 }
 

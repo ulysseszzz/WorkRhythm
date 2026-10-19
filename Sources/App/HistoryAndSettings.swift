@@ -292,15 +292,15 @@ struct SettingsPage: View {
             }
             Section("各饮品记住的容量") {
                 ForEach(DrinkPreset.displayOrder, id: \.self) { preset in
-                    Stepper("\(preset.shortTitle) · \(DrinkAmount.sliderValue(app.settings.waterPlan.servingML(for: preset))) mL",
-                            value: Binding(get: { DrinkAmount.sliderValue(app.settings.waterPlan.servingML(for: preset)) },
+                    Stepper("\(preset.shortTitle) · \(DrinkAmount.bounded(app.settings.waterPlan.servingML(for: preset))) mL",
+                            value: Binding(get: { DrinkAmount.bounded(app.settings.waterPlan.servingML(for: preset)) },
                                            set: { amount in app.updateWaterPlan { $0.setServingML(amount, for: preset) } }),
-                            in: 150...600, step: 150)
+                            in: DrinkAmount.range, step: 10)
                 }
                 Button("恢复默认容量") { app.updateWaterPlan { $0.presetVolumesML = nil } }
-                Text("菜单滑杆每格 150 mL，提供 150 / 300 / 450 / 600 mL 四档，点刻度也能选量。切换类型保留已选容量，点击记录才记账。再次打开菜单时沿用上次饮品及容量。")
+                Text("菜单会按饮品提供常见听装、瓶装、盒装或杯装规格，也可以按 10 mL 调整实际饮用量。切换类型会恢复该饮品上次使用的容量，点击记录才记账。")
                     .font(.caption).foregroundStyle(.secondary)
-                Text("旧容量仅在滑杆显示时就近取档并限到 600 mL，历史记录不变。饮品均按记录体积合计。")
+                Text("容量范围为 10–2000 mL；旧版四档偏好首次升级时会贴近对应饮品的常见包装，其他自定义值和全部历史记录保持原值。")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("轻量提醒") {

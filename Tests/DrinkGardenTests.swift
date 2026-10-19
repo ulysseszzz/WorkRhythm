@@ -25,18 +25,25 @@ final class DrinkGardenTests: XCTestCase {
         let split = DrinkGarden(events: [event(.coffee, 250), event(.coffee, 250)])
         XCTAssertEqual(one, split)
     }
-    func testSliderStopsAndLegacyVolumeProjection() {
+    func testMarketPackageOptionsAndExactVolumeBounds() {
         XCTAssertEqual(DrinkPreset.displayOrder.map(\.shortTitle), ["茶", "水", "奶茶", "牛奶", "可乐", "咖啡"])
-        XCTAssertEqual(DrinkAmount.steps, [150, 300, 450, 600])
-        for step in DrinkAmount.steps {
-            XCTAssertTrue(DrinkAmount.isSliderValue(step))
-            XCTAssertEqual(DrinkAmount.sliderValue(step), step)
+        XCTAssertEqual(DrinkPreset.waterBottle.servingOptions.map(\.amountML), [350, 500, 550, 1500])
+        XCTAssertEqual(DrinkPreset.tea.servingOptions.map(\.amountML), [250, 310, 500, 1000])
+        XCTAssertEqual(DrinkPreset.cola.servingOptions.map(\.amountML), [200, 330, 500, 888])
+        XCTAssertEqual(DrinkPreset.milk.servingOptions.map(\.amountML), [200, 250, 500, 1000])
+        XCTAssertEqual(DrinkPreset.coffee.servingOptions.map(\.amountML), [240, 268, 270, 450])
+        for preset in DrinkPreset.allCases {
+            XCTAssertTrue(preset.servingOptions.map(\.amountML).contains(preset.defaultML))
+            XCTAssertTrue(preset.servingOptions.allSatisfy { DrinkAmount.isValid($0.amountML) })
         }
-        for value in [0, 149, 250, 330, 500, 601, 700] { XCTAssertFalse(DrinkAmount.isSliderValue(value)) }
-        XCTAssertEqual(DrinkAmount.sliderValue(500), 450)
-        XCTAssertEqual(DrinkAmount.sliderValue(700), 600)
-        XCTAssertEqual(DrinkAmount.sliderValue(0), 150)
-        XCTAssertEqual(DrinkAmount.sliderValue(330), 300)
+        XCTAssertTrue(DrinkPreset.tea.servingOptions.contains(.init(250, "盒装")))
+        XCTAssertTrue(DrinkPreset.cola.servingOptions.contains(.init(330, "听装")))
+        XCTAssertTrue(DrinkPreset.waterBottle.servingOptions.contains(.init(500, "瓶装")))
+        XCTAssertEqual(DrinkAmount.bounded(0), 10)
+        XCTAssertEqual(DrinkAmount.bounded(500), 500)
+        XCTAssertEqual(DrinkAmount.bounded(3000), 2000)
+        XCTAssertTrue(DrinkAmount.isValid(330))
+        XCTAssertTrue(DrinkAmount.isValid(500))
     }
     func testTeaMilkPersistenceUndoAndLegacyRainbow() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

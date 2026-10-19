@@ -115,7 +115,12 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
         let directory = dataDirectory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("WorkRhythm", isDirectory: true)
         repository = try Repository(url: directory.appendingPathComponent("workrhythm.sqlite"))
         ledger = try SessionLedger(repository: repository)
-        let initialSettings = try repository.settings()
+        var initialSettings = try repository.settings()
+        var hydrationPlan = initialSettings.waterPlan
+        if hydrationPlan.migrateLegacyServingOptions() {
+            initialSettings.hydrationPlan = hydrationPlan
+            try repository.saveSettings(initialSettings)
+        }
         settings = initialSettings
         bootID = String(Date().timeIntervalSince1970 - ProcessInfo.processInfo.systemUptime)
         reminders = ReminderPolicy(now: Date(), settings: initialSettings, lastDrink: ledger.hydration.last { $0.voidedAt == nil }?.timestamp)
@@ -135,7 +140,7 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
         configureNotifications()
     }
     func start() {
-        log("app_start", "version=1.1.0 build=20 schema=2; fixed-width multi-display status item")
+        log("app_start", "version=1.1.0 build=21 schema=2; drink-specific market package sizes")
         monitor.start()
         startHeartbeat()
         checkpoint()
@@ -288,15 +293,15 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
         notify("focus", title: "专注完成", body: "做得够久了。准备好时，用触发角离开休息。")
         scheduleFocus(); revision += 1; statusChanged?()
     }
-    func recordSliderDrink(_ preset: DrinkPreset, amountML: Int) {
-        guard DrinkAmount.isSliderValue(amountML) else {
-            errorMessage = "请选择 150、300、450 或 600 mL。"
+    func recordPresetDrink(_ preset: DrinkPreset, amountML: Int) {
+        guard DrinkAmount.isValid(amountML) else {
+            errorMessage = "请输入 10–2000 mL 的实际饮用量。"
             return
         }
-        drink(source: "slider", preset: preset, amountML: amountML)
+        drink(source: "package", preset: preset, amountML: amountML)
     }
     func drink(source: String = "menu", preset: DrinkPreset? = nil, amountML: Int? = nil) {
-        if let amountML, !(10...2000).contains(amountML) {
+        if let amountML, !DrinkAmount.isValid(amountML) {
             errorMessage = "请输入 10–2000 mL 的实际饮用量。"
             return
         }

@@ -86,15 +86,12 @@ public struct DrinkGarden: Equatable {
 }
 
 public enum DrinkAmount {
-    public static let steps = [150, 300, 450, 600]
-    public static func sliderValue(_ ml: Int) -> Int {
-        let bounded = min(600, max(150, ml))
-        return Int((Double(bounded) / 150).rounded()) * 150
-    }
-    public static func isSliderValue(_ ml: Int) -> Bool { steps.contains(ml) }
+    public static let range = 10...2000
+    public static func bounded(_ ml: Int) -> Int { min(range.upperBound, max(range.lowerBound, ml)) }
+    public static func isValid(_ ml: Int) -> Bool { range.contains(ml) }
     public static func parse(_ text: String) -> Int? {
         guard let value = Int(text.trimmingCharacters(in: .whitespacesAndNewlines)),
-              (10...2000).contains(value) else { return nil }
+              isValid(value) else { return nil }
         return value
     }
 }

@@ -246,23 +246,26 @@ struct RenderPreview {
         let drinks = try AppController(dataDirectory: directory.appendingPathComponent("presets"))
         drinks.state = .active
         for preset in [DrinkPreset.waterBottle, .coffee, .milkTea, .cola] { drinks.drink(source: "preview_fixture", preset: preset) }
-        precondition(drinks.waterProgress.totalML == 1580)
-        precondition(drinks.summary(drinks.now).waterML == 1580)
+        precondition(drinks.waterProgress.totalML == 1420)
+        precondition(drinks.summary(drinks.now).waterML == 1420)
         precondition(drinks.waterProgress.lastEntry?.drinkPresetID == "cola")
         func drinkCard() -> some View {
             HydrationBottleCard(progress: drinks.waterProgress, feedback: drinks.hydrationFeedback,
-                onRecord: { drinks.recordSliderDrink($0, amountML: $1) },
+                onRecord: { drinks.recordPresetDrink($0, amountML: $1) },
                 onUndo: { drinks.undoLastDrink() }, onSettings: {})
                 .padding(14).background(Color(nsColor: .windowBackgroundColor))
         }
         try await capture(drinkCard(), size: NSSize(width: 300, height: 420), name: "drink-presets")
         try await capture(drinkCard(), size: NSSize(width: 300, height: 420), name: "drink-presets-dark", dark: true)
         drinks.undoLastDrink()
-        precondition(drinks.waterProgress.totalML == 1250)
-        precondition(drinks.summary(drinks.now).waterML == 1250)
-        drinks.updateWaterPlan { $0.setServingML(350, for: .coffee) }
+        precondition(drinks.waterProgress.totalML == 1090)
+        precondition(drinks.summary(drinks.now).waterML == 1090)
+        drinks.updateWaterPlan {
+            $0.dailyTargetML = 1400
+            $0.setServingML(350, for: .coffee)
+        }
         drinks.drink(source: "preview_fixture", preset: .coffee)
-        precondition(drinks.waterProgress.totalML == 1600 && drinks.waterProgress.completed)
+        precondition(drinks.waterProgress.totalML == 1440 && drinks.waterProgress.completed)
         precondition(drinks.waterProgress.lastEntry?.amountML == 350)
         precondition(drinks.waterProgress.lastEntry?.drinkTitle == "一杯咖啡")
         precondition(drinks.hydrationFeedback.contains("获得今日奖杯"))
@@ -285,6 +288,20 @@ struct RenderPreview {
                           size: NSSize(width: 790, height: 900), name: "trophy-calendar")
         try await capture(HistoryPage(app: trophyApp).background(Color(nsColor: .windowBackgroundColor)),
                           size: NSSize(width: 790, height: 900), name: "trophy-calendar-dark", dark: true)
+        let migrationDirectory = directory.appendingPathComponent("serving-migration")
+        let migrationRepository = try Repository(url: migrationDirectory.appendingPathComponent("workrhythm.sqlite"))
+        var legacySettings = AppSettings()
+        var legacyPlan = legacySettings.waterPlan
+        legacyPlan.presetVolumesML = ["waterBottle": 450, "tea": 450, "coffee": 500]
+        legacySettings.hydrationPlan = legacyPlan
+        try migrationRepository.saveSettings(legacySettings)
+        try migrationRepository.save(HydrationEvent(timestamp: Date(), source: "legacy", amountML: 450,
+                                                    drinkPresetID: DrinkPreset.waterBottle.rawValue))
+        let migratedApp = try AppController(dataDirectory: migrationDirectory)
+        precondition(migratedApp.settings.waterPlan.servingML(for: .waterBottle) == 500)
+        precondition(migratedApp.settings.waterPlan.servingML(for: .tea) == 500)
+        precondition(migratedApp.settings.waterPlan.servingML(for: .coffee) == 500)
+        precondition(migratedApp.water.first?.amountML == 450, "Serving migration must not rewrite history")
         let fresh = try AppController(dataDirectory: directory.appendingPathComponent("actual-amounts"))
         fresh.state = .active
         fresh.drink(source: "preview_fixture", preset: .coffee, amountML: 500)
@@ -334,13 +351,13 @@ struct RenderPreview {
         try await capture(recipes, size: NSSize(width: 450, height: 1300), name: "recipe-gallery")
         let sliderApp = try AppController(dataDirectory: directory.appendingPathComponent("slider"))
         sliderApp.state = .active
-        for ml in [0, 149, 250, 601, 700] { sliderApp.recordSliderDrink(.tea, amountML: ml) }
-        precondition(sliderApp.water.isEmpty, "Off-grid or over-limit slider submissions must not record")
+        for ml in [-1, 0, 2001, 3000] { sliderApp.recordPresetDrink(.tea, amountML: ml) }
+        precondition(sliderApp.water.isEmpty, "Out-of-range package submissions must not record")
         sliderApp.errorMessage = ""
-        sliderApp.recordSliderDrink(.tea, amountML: 150)
+        sliderApp.recordPresetDrink(.tea, amountML: 310)
         precondition(sliderApp.waterProgress.garden.recipe == .teaBell)
-        sliderApp.recordSliderDrink(.milk, amountML: 600)
-        precondition(sliderApp.waterProgress.totalML == 750)
+        sliderApp.recordPresetDrink(.milk, amountML: 250)
+        precondition(sliderApp.waterProgress.totalML == 560)
         precondition(sliderApp.waterProgress.garden.recipe == .matcha)
         sliderApp.updateWaterPlan { $0.themeID = "flowers" }
         for height: CGFloat in [380, 440] {
@@ -360,10 +377,10 @@ struct RenderPreview {
                           size: NSSize(width: 340, height: 440), name: "menu-slider-dark", dark: true)
         let reopenedSlider = try AppController(dataDirectory: directory.appendingPathComponent("slider"))
         precondition(reopenedSlider.settings.waterPlan.selectedDrink == .milk)
-        precondition(reopenedSlider.settings.waterPlan.servingML(for: .milk) == 600)
+        precondition(reopenedSlider.settings.waterPlan.servingML(for: .milk) == 250)
         precondition(reopenedSlider.waterProgress.garden.recipe == .matcha)
         sliderApp.undoLastDrink()
-        precondition(sliderApp.waterProgress.totalML == 150 && sliderApp.waterProgress.garden.recipe == .teaBell)
+        precondition(sliderApp.waterProgress.totalML == 310 && sliderApp.waterProgress.garden.recipe == .teaBell)
         for (offset, metadata) in [(-3600.0, "lockObserved(uptime: 12.0, idleSeconds: 0.0, stillInCorner: true)"),
                                    (-3500.0, "displaySleep(uptime: 13.0, idleSeconds: 0.0, stillInCorner: true)"),
                                    (-1800.0, "displayWake"), (-1799.0, "unlock")] {
@@ -391,9 +408,9 @@ struct RenderPreview {
         precondition(ActivityRecords.departures(sliderApp.sessions, day: sliderApp.now, now: sliderApp.now).count == 3)
         precondition(ActivityRecords.departures(sliderApp.sessions, day: sliderApp.now, now: sliderApp.now)
             .filter { !$0.label.isEmpty }.count == 2)
-        sliderApp.recordSliderDrink(.coffee, amountML: 600)
-        sliderApp.recordSliderDrink(.milkTea, amountML: 600)
-        sliderApp.recordSliderDrink(.waterBottle, amountML: 300)
+        sliderApp.recordPresetDrink(.coffee, amountML: 240)
+        sliderApp.recordPresetDrink(.milkTea, amountML: 350)
+        sliderApp.recordPresetDrink(.waterBottle, amountML: 500)
         try await render("menu-empty-screen-events")
         try await capture(MenuContent(app: sliderApp).background(Color(nsColor: .windowBackgroundColor)),
                           size: NSSize(width: 340, height: 440), name: "menu-records")
@@ -403,7 +420,7 @@ struct RenderPreview {
                           size: NSSize(width: 340, height: 380), name: "menu-records-short")
         try await capture(DrinkComposer(plan: sliderApp.settings.waterPlan, tint: .teal, onRecord: { _, _ in })
                             .background(Color(nsColor: .windowBackgroundColor)),
-                          size: NSSize(width: 312, height: 245), name: "drink-composer")
+                          size: NSSize(width: 320, height: 310), name: "drink-composer")
         try await capture(ActivityRecordsPage(app: sliderApp).background(Color(nsColor: .windowBackgroundColor)),
                           size: NSSize(width: 770, height: 680), name: "records")
         try await capture(ActivityRecordsPage(app: sliderApp).background(Color(nsColor: .windowBackgroundColor)),
@@ -416,7 +433,7 @@ struct RenderPreview {
         // No Accessibility permission or personal app interaction is needed.
         let interactionApp = try AppController(dataDirectory: directory.appendingPathComponent("interaction"))
         interactionApp.state = .active
-        interactionApp.updateWaterPlan { $0.setServingML(300, for: .waterBottle) }
+        interactionApp.updateWaterPlan { $0.setServingML(500, for: .waterBottle) }
         var openedPage = ""
         interactionApp.openPage = { openedPage = $0 }
         let interactionHost = NSHostingView(rootView: MenuContent(app: interactionApp))
@@ -469,17 +486,17 @@ struct RenderPreview {
             } else { match.accessibilityPerformAction(.press) }
             try await Task.sleep(for: .seconds(0.1))
         }
-        try await press("水 · 300 mL", exact: false)
+        try await press("水 · 500 mL", exact: false)
         try await press("选择咖啡，不记录")
-        try await press("选择 600 毫升")
+        try await press("瓶装 268 毫升")
         precondition(interactionApp.water.isEmpty, "Selection must not record")
-        try await press("记录咖啡 · 600 mL")
-        precondition(interactionApp.waterProgress.totalML == 600 && interactionApp.waterProgress.count == 1)
+        try await press("记录咖啡 · 268 mL")
+        precondition(interactionApp.waterProgress.totalML == 268 && interactionApp.waterProgress.count == 1)
         precondition(interactionApp.settings.waterPlan.selectedDrink == .coffee)
-        try await press("记录咖啡 600 毫升")
-        precondition(interactionApp.waterProgress.totalML == 1200 && interactionApp.waterProgress.count == 2)
+        try await press("记录咖啡 268 毫升")
+        precondition(interactionApp.waterProgress.totalML == 536 && interactionApp.waterProgress.count == 2)
         try await press("撤销")
-        precondition(interactionApp.waterProgress.totalML == 600 && interactionApp.waterProgress.count == 1)
+        precondition(interactionApp.waterProgress.totalML == 268 && interactionApp.waterProgress.count == 1)
         try await press("花历")
         precondition(openedPage == "history")
         try await press("全部", exact: false)
@@ -496,7 +513,7 @@ struct RenderPreview {
         }
         try "PASS: native chooser, select without saving, confirm once, remembered quick record, undo, flower calendar and full records navigation; lock, lid and active departure records/counts with quick labels; dense layout with focus/reminder/error."
             .write(to: output.appendingPathComponent("interaction-result.txt"), atomically: true, encoding: .utf8)
-        try Data("PASS: garden trophy persistence and four-day calendar in light/dark; six drinks, four-stop slider, invalid/off-grid rejected, tea150 milk600 persisted, matcha undo/restart, twelve recipe artwork previews; main menu no NSScrollView and natural contents fit 440/380pt; legacy timeline/cache/hydration regression. Live animation/visibility: \(canCheckLiveAnimation ? "PASS" : "SKIPPED (window occluded)")".utf8)
+        try Data("PASS: garden trophy persistence and four-day calendar in light/dark; six drinks with market package sizes and exact custom amounts, invalid ranges rejected, tea310 and milk250 persisted, matcha undo/restart, twelve recipe artwork previews; main menu no NSScrollView and natural contents fit 440/380pt; legacy timeline/cache/hydration regression. Live animation/visibility: \(canCheckLiveAnimation ? "PASS" : "SKIPPED (window occluded)")".utf8)
             .write(to: output.appendingPathComponent("result.txt"))
         NSApp.terminate(nil)
     }

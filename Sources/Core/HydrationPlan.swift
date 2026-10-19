@@ -1,5 +1,14 @@
 import Foundation
 
+public struct DrinkServingOption: Hashable {
+    public let amountML: Int
+    public let container: String
+    public init(_ amountML: Int, _ container: String) {
+        self.amountML = amountML
+        self.container = container
+    }
+}
+
 public enum DrinkPreset: String, Codable, CaseIterable {
     case waterBottle, coffee, milkTea, cola, tea, milk
     public static let displayOrder: [DrinkPreset] = [.tea, .waterBottle, .milkTea, .milk, .cola, .coffee]
@@ -36,10 +45,28 @@ public enum DrinkPreset: String, Codable, CaseIterable {
     /// Editable starting values, not universal package sizes.
     public var defaultML: Int {
         switch self {
-        case .waterBottle, .milkTea: return 500
-        case .coffee: return 250
+        case .waterBottle: return 500
+        case .coffee: return 240
+        case .milkTea: return 350
         case .cola: return 330
-        case .tea, .milk: return 300
+        case .tea: return 500
+        case .milk: return 250
+        }
+    }
+    public var servingOptions: [DrinkServingOption] {
+        switch self {
+        case .waterBottle:
+            return [.init(350, "瓶装"), .init(500, "瓶装"), .init(550, "瓶装"), .init(1500, "大瓶")]
+        case .coffee:
+            return [.init(240, "听装"), .init(268, "瓶装"), .init(270, "瓶装"), .init(450, "瓶装")]
+        case .milkTea:
+            return [.init(250, "瓶装"), .init(300, "杯装"), .init(350, "瓶装"), .init(400, "瓶装")]
+        case .cola:
+            return [.init(200, "迷你听"), .init(330, "听装"), .init(500, "瓶装"), .init(888, "大瓶")]
+        case .tea:
+            return [.init(250, "盒装"), .init(310, "听装"), .init(500, "瓶装"), .init(1000, "大瓶")]
+        case .milk:
+            return [.init(200, "盒装"), .init(250, "盒装"), .init(500, "盒装"), .init(1000, "家庭装")]
         }
     }
 }
@@ -69,6 +96,7 @@ public struct HydrationPlan: Codable, Equatable {
     public var themeID: String?
     public var ambientMotion: Bool?
     public var presetVolumesML: [String: Int]?
+    public var servingOptionsVersion: Int?
     public var theme: HydrationTheme {
         if themeID == "ivy" { return .flowers }
         return HydrationTheme(rawValue: themeID ?? "") ?? .bottle
@@ -90,6 +118,25 @@ public struct HydrationPlan: Codable, Equatable {
         var values = presetVolumesML ?? [:]
         values[preset.rawValue] = min(2000, max(10, amount))
         presetVolumesML = values
+    }
+    @discardableResult
+    public mutating func migrateLegacyServingOptions() -> Bool {
+        guard (servingOptionsVersion ?? 0) < 1 else { return false }
+        let legacySteps = Set([150, 300, 450, 600])
+        if var values = presetVolumesML {
+            for preset in DrinkPreset.allCases {
+                guard let value = values[preset.rawValue], legacySteps.contains(value),
+                      let nearest = preset.servingOptions.min(by: {
+                          let left = abs($0.amountML - value)
+                          let right = abs($1.amountML - value)
+                          return left == right ? $0.amountML < $1.amountML : left < right
+                      }) else { continue }
+                values[preset.rawValue] = nearest.amountML
+            }
+            presetVolumesML = values
+        }
+        servingOptionsVersion = 1
+        return true
     }
 }
 

@@ -150,7 +150,7 @@ struct MenuContent: View {
             }.font(.caption)
             HydrationBottleCard(progress: app.waterProgress, feedback: app.hydrationFeedback,
                                 compact: availableHeight < 440,
-                                onRecord: { app.recordSliderDrink($0, amountML: $1) },
+                                onRecord: { app.recordPresetDrink($0, amountML: $1) },
                                 onUndo: { app.undoLastDrink() }, onSettings: { app.openPage?("settings") },
                                 onTheme: { theme in app.updateWaterPlan { $0.themeID = theme.rawValue } },
                                 onHistory: { app.openPage?("history") })
@@ -272,7 +272,7 @@ struct DashboardPage: View {
                 ReminderBanner(app: app)
                 HStack(alignment: .top, spacing: 18) {
                     HydrationBottleCard(progress: app.waterProgress, feedback: app.hydrationFeedback,
-                                    onRecord: { app.recordSliderDrink($0, amountML: $1) },
+                                    onRecord: { app.recordPresetDrink($0, amountML: $1) },
                                     onUndo: { app.undoLastDrink() }, onSettings: { app.openPage?("settings") },
                                     onTheme: { theme in app.updateWaterPlan { $0.themeID = theme.rawValue } },
                                     onHistory: { app.openPage?("history") }, spacious: true)

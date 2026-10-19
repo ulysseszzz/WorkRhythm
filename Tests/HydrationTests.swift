@@ -5,7 +5,7 @@ final class HydrationTests: XCTestCase {
     let now = Date(timeIntervalSince1970: 1_800_000_000)
     func testPresetDefaultsLegacyDecodeAndCapacityPersistence() throws {
         let old = try JSONDecoder().decode(HydrationPlan.self, from: Data(#"{"dailyTargetML":1600,"plannedDrinks":8}"#.utf8))
-        XCTAssertEqual(DrinkPreset.allCases.map { old.servingML(for: $0) }, [500, 250, 500, 330, 300, 300])
+        XCTAssertEqual(DrinkPreset.allCases.map { old.servingML(for: $0) }, [500, 240, 350, 330, 500, 250])
         var plan = old
         plan.setServingML(550, for: .waterBottle)
         plan.setServingML(360, for: .coffee)
@@ -18,6 +18,33 @@ final class HydrationTests: XCTestCase {
         plan.setServingML(9999, for: .milkTea)
         XCTAssertEqual(plan.servingML(for: .coffee), 10)
         XCTAssertEqual(plan.servingML(for: .milkTea), 2000)
+    }
+    func testLegacyUniformStepsMigrateOnceWithoutChangingHistory() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let repository = try Repository(url: directory.appendingPathComponent("test.sqlite"))
+        var settings = AppSettings()
+        var plan = settings.waterPlan
+        plan.presetVolumesML = ["waterBottle": 450, "tea": 450, "milk": 600, "coffee": 500]
+        settings.hydrationPlan = plan
+        try repository.saveSettings(settings)
+        let ledger = try SessionLedger(repository: repository)
+        try ledger.drink(at: now, source: "legacy", amountML: 450, drinkPresetID: DrinkPreset.waterBottle.rawValue)
+
+        var migrated = try repository.settings().waterPlan
+        XCTAssertTrue(migrated.migrateLegacyServingOptions())
+        XCTAssertEqual(migrated.servingML(for: .waterBottle), 500)
+        XCTAssertEqual(migrated.servingML(for: .tea), 500)
+        XCTAssertEqual(migrated.servingML(for: .milk), 500)
+        XCTAssertEqual(migrated.servingML(for: .coffee), 500)
+        XCTAssertEqual(migrated.servingOptionsVersion, 1)
+        settings.hydrationPlan = migrated
+        try repository.saveSettings(settings)
+        XCTAssertEqual(try repository.hydration().first?.amountML, 450)
+
+        migrated = try repository.settings().waterPlan
+        XCTAssertFalse(migrated.migrateLegacyServingOptions())
+        XCTAssertEqual(migrated.servingML(for: .waterBottle), 500)
     }
     func testMixedDrinksRetainTypeVolumeUndoAndCSV() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -32,19 +59,20 @@ final class HydrationTests: XCTestCase {
         }
         let restored = try SessionLedger(repository: repo)
         XCTAssertEqual(restored.hydration.map(\.drinkPresetID), originalTypes.map { Optional($0.rawValue) })
-        XCTAssertEqual(restored.hydration.map(\.amountML), [500, 250, 500, 330])
-        XCTAssertEqual(HydrationProgress(events: restored.hydration, plan: plan, date: now).totalML, 1580)
+        XCTAssertEqual(restored.hydration.map(\.amountML), [500, 240, 350, 330])
+        XCTAssertEqual(HydrationProgress(events: restored.hydration, plan: plan, date: now).totalML, 1420)
         plan.setServingML(600, for: .milkTea)
         var settings = AppSettings(); settings.hydrationPlan = plan
         try repo.saveSettings(settings)
         XCTAssertEqual(try repo.settings().waterPlan.servingML(for: .milkTea), 600)
-        XCTAssertEqual(try repo.hydration()[2].amountML, 500)
+        XCTAssertEqual(try repo.hydration()[2].amountML, 350)
         try restored.undoDrink(id: restored.hydration.last!.id, at: now + 5)
         let reloaded = try repo.hydration()
         let progress = HydrationProgress(events: reloaded, plan: plan, date: now)
-        XCTAssertEqual(progress.totalML, 1250)
+        XCTAssertEqual(progress.totalML, 1090)
         XCTAssertEqual(progress.count, 3)
         XCTAssertEqual(progress.lastEntry?.drinkTitle, "一杯奶茶")
+        XCTAssertEqual(progress.lastEntry?.amountML, 350)
         let csv = StatisticsService.csv(sessions: [Session(kind: .work, start: now)], focuses: [],
                                          hydration: reloaded, now: now + 6)
         XCTAssertTrue(csv.contains("voided_at,drink_preset"))
@@ -53,7 +81,7 @@ final class HydrationTests: XCTestCase {
         XCTAssertTrue(csv.split(separator: "\n").allSatisfy { $0.split(separator: ",", omittingEmptySubsequences: false).count == 12 })
         let summary = StatisticsService.summary(date: now, sessions: [], focuses: [], hydration: reloaded,
                                                settings: settings, now: now + 6)
-        XCTAssertEqual(summary.waterML, 1250)
+        XCTAssertEqual(summary.waterML, 1090)
     }
     func testThemeMigrationPersistenceAndUnchangedProgress() throws {
         let oldPlan = Data(#"{"dailyTargetML":1800,"plannedDrinks":9,"customServingML":250}"#.utf8)
