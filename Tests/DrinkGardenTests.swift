@@ -62,6 +62,12 @@ final class DrinkGardenTests: XCTestCase {
         XCTAssertEqual(DrinkAmount.sliderPosition(for: halfway, nodes: nodes), 1.5, accuracy: 0.0001)
         XCTAssertEqual(DrinkAmount.amount(atSliderPosition: -1, nodes: nodes), 150)
         XCTAssertEqual(DrinkAmount.amount(atSliderPosition: 99, nodes: nodes), 1500)
+        XCTAssertEqual(DrinkAmount.snappedAmount(atSliderPosition: 0.89, nodes: nodes), 350)
+        XCTAssertEqual(DrinkAmount.snappedAmount(atSliderPosition: 1.11, nodes: nodes), 350)
+        XCTAssertEqual(DrinkAmount.snappedAmount(atSliderPosition: 0.87, nodes: nodes), 324)
+        XCTAssertEqual(DrinkAmount.snappedAmount(atSliderPosition: 1.13, nodes: nodes), 370)
+        XCTAssertEqual(DrinkAmount.snappedAmount(atSliderPosition: 2.90, nodes: nodes), 550)
+        XCTAssertEqual(DrinkAmount.parse("346"), 346, "Exact input must remain unsnapped")
     }
     func testTeaMilkPersistenceUndoAndLegacyRainbow() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

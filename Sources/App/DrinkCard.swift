@@ -112,7 +112,7 @@ struct DrinkComposer: View {
     private var sliderAmount: Binding<Double> {
         Binding(
             get: { DrinkAmount.sliderPosition(for: selectedML, nodes: nodes) },
-            set: { amount = DrinkAmount.amount(atSliderPosition: $0, nodes: nodes) }
+            set: { amount = DrinkAmount.snappedAmount(atSliderPosition: $0, nodes: nodes) }
         )
     }
     var body: some View {

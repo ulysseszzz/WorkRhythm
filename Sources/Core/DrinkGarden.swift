@@ -108,6 +108,16 @@ public enum DrinkAmount {
         let fraction = clamped - Double(index)
         return bounded(Int((Double(nodes[index]) + Double(nodes[index + 1] - nodes[index]) * fraction).rounded()))
     }
+    public static func snappedAmount(atSliderPosition position: Double, nodes: [Int],
+                                     threshold: Double = 0.12) -> Int {
+        guard nodes.count > 1 else { return amount(atSliderPosition: position, nodes: nodes) }
+        let clamped = min(Double(nodes.count - 1), max(0, position))
+        let nearest = clamped.rounded()
+        if abs(clamped - nearest) <= max(0, threshold) {
+            return bounded(nodes[Int(nearest)])
+        }
+        return amount(atSliderPosition: clamped, nodes: nodes)
+    }
     public static func parse(_ text: String) -> Int? {
         guard let value = Int(text.trimmingCharacters(in: .whitespacesAndNewlines)),
               isValid(value) else { return nil }

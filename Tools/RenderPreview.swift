@@ -380,6 +380,10 @@ struct RenderPreview {
         try await capture(recipes, size: NSSize(width: 450, height: 1300), name: "recipe-gallery")
         let sliderApp = try AppController(dataDirectory: directory.appendingPathComponent("slider"))
         sliderApp.state = .active
+        let waterNodes = DrinkPreset.waterBottle.amountNodes
+        let near350 = DrinkAmount.sliderPosition(for: 346, nodes: waterNodes)
+        precondition(DrinkAmount.snappedAmount(atSliderPosition: near350, nodes: waterNodes) == 350)
+        precondition(DrinkAmount.snappedAmount(atSliderPosition: 0.5, nodes: waterNodes) == 250)
         for ml in [-1, 0, 2001, 3000] { sliderApp.recordPresetDrink(.tea, amountML: ml) }
         precondition(sliderApp.water.isEmpty, "Out-of-range package submissions must not record")
         sliderApp.errorMessage = ""
@@ -547,7 +551,7 @@ struct RenderPreview {
         }
         try "PASS: native chooser, select without saving, confirm once, remembered quick record, undo, direct 30/45-minute focus controls, flower calendar and full records navigation; lock, lid and active departure records/counts with quick labels; dense layout with focus/reminder/error."
             .write(to: output.appendingPathComponent("interaction-result.txt"), atomically: true, encoding: .utf8)
-        try Data("PASS: subtle recipe tint covers the full menu while rising card water remains distinct; direct 25/30/45-minute focus controls; rising card water levels at empty/partial/complete, garden and water animations stop when hidden or disabled; garden trophy persistence and four-day calendar in light/dark; six drinks with merged package nodes, continuous sliders and exact custom amounts, invalid ranges rejected, tea310 and milk250 persisted, matcha undo/restart, twelve recipe artwork previews; main menu no NSScrollView and natural contents fit 440/380pt; legacy timeline/cache/hydration regression. Live animation/visibility: \(canCheckLiveAnimation ? "PASS" : "SKIPPED (window occluded)")".utf8)
+        try Data("PASS: continuous serving sliders snap near package nodes while preserving custom values; subtle recipe tint covers the full menu while rising card water remains distinct; direct 25/30/45-minute focus controls; rising card water levels at empty/partial/complete, garden and water animations stop when hidden or disabled; garden trophy persistence and four-day calendar in light/dark; six drinks with merged package nodes and exact custom amounts, invalid ranges rejected, tea310 and milk250 persisted, matcha undo/restart, twelve recipe artwork previews; main menu no NSScrollView and natural contents fit 440/380pt; legacy timeline/cache/hydration regression. Live animation/visibility: \(canCheckLiveAnimation ? "PASS" : "SKIPPED (window occluded)")".utf8)
             .write(to: output.appendingPathComponent("result.txt"))
         NSApp.terminate(nil)
     }

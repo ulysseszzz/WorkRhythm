@@ -72,7 +72,7 @@ public enum DrinkPreset: String, Codable, CaseIterable {
     /// A small custom serving plus researched package sizes. Nearby package variants
     /// are represented by one node while the slider remains continuous.
     public var amountNodes: [Int] {
-        Array(Set([150] + servingOptions.map(\.amountML))).sorted()
+        [150] + servingOptions.map(\.amountML)
     }
 }
 
