@@ -54,7 +54,9 @@ struct HistoryPage: View {
                 ScrollView(.horizontal) {
                     Grid(alignment: .leading, horizontalSpacing: 22, verticalSpacing: 14) {
                         GridRow {
-                            ForEach(["日期", "在工位", "专注", "离座", "锁屏", "合盖", "离座次数", "平均工作", "工作中位数", "最长工作", "平均离座", "平均间隔", "次 / 工位小时", "喝水", "番茄钟"], id: \.self) {
+                            ForEach(["日期", "在工位", "专注", "离座", "锁屏", "合盖", "离座次数",
+                                     "快捷键 / 菜单锁屏", "触发角锁屏", "平均工作", "工作中位数", "最长工作",
+                                     "平均离座", "平均间隔", "次 / 工位小时", "喝水", "番茄钟"], id: \.self) {
                                 Text($0).font(.caption).foregroundStyle(.secondary)
                             }
                         }
@@ -67,6 +69,8 @@ struct HistoryPage: View {
                                 Text(DurationText.short(s.locked))
                                 Text(DurationText.short(s.moving))
                                 Text("\(s.breaks)")
+                                Text("\(s.recentInputLockLeaves)")
+                                Text("\(s.hotCornerLockLeaves)")
                                 Text(DurationText.short(s.averageWork))
                                 Text(DurationText.short(s.medianWork))
                                 Text(DurationText.short(s.longestWork))
@@ -91,7 +95,7 @@ struct HistoryPage: View {
                     MetricCard(title: "中位数", value: selected.medianInterval > 0 ? DurationText.short(selected.medianInterval) : "—")
                     MetricCard(title: "最短 / 最长", value: selected.minInterval > 0 ? "\(DurationText.short(selected.minInterval)) / \(DurationText.short(selected.maxInterval))" : "—")
                 }
-                Text("离座包含主动离开、锁屏与合盖。间隔按同一天相邻两次离座开始计算；解锁与开盖只结束离座，不重复计次。累计时长按当地日历切分，跨午夜次数归开始日；平均离座排除进行中与观测中断记录。")
+                Text("离座包含主动离开、锁屏与合盖。快捷键 / 菜单锁屏依据锁屏前 5 秒内的近期输入推断；macOS 不公开具体锁屏入口，因此 Touch ID 等无法可靠区分。间隔按同一天相邻两次离座开始计算；解锁与开盖只结束离座，不重复计次。")
                     .font(.caption).foregroundStyle(.secondary)
                 HStack {
                     Button("导出全部 CSV") { app.export("csv") }

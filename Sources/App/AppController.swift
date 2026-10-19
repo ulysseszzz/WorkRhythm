@@ -135,7 +135,7 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
         configureNotifications()
     }
     func start() {
-        log("app_start", "version=1.1.0 build=18 schema=2; Chinese app name and heartbeat cache optimization")
+        log("app_start", "version=1.1.0 build=19 schema=2; inferred shortcut and menu lock statistics")
         monitor.start()
         startHeartbeat()
         checkpoint()

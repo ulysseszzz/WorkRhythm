@@ -65,17 +65,22 @@ final class ActivityRecordsTests: XCTestCase {
                                  end: start.addingTimeInterval(360), trigger: "manual_lock_recent_input")
         let activeLeave = Session(kind: .away, start: start.addingTimeInterval(420),
                                   end: start.addingTimeInterval(480), trigger: "hot_corner:br")
+        let cornerLock = Session(kind: .away, start: start.addingTimeInterval(540),
+                                 end: start.addingTimeInterval(590), trigger: "hot_corner_lock:br")
         let zeroUpgrade = Session(kind: .locked, start: start.addingTimeInterval(300),
                                   end: start.addingTimeInterval(300), trigger: "lock")
         let wakeLogin = Session(kind: .locked, start: start.addingTimeInterval(500),
                                 end: start.addingTimeInterval(510), trigger: "display_wake")
         let work = Session(kind: .work, start: start, end: start.addingTimeInterval(30))
-        let rows = ActivityRecords.departures([work, locked, lid, manualLock, activeLeave, zeroUpgrade, wakeLogin],
+        let rows = ActivityRecords.departures([work, locked, lid, manualLock, activeLeave, cornerLock,
+                                               zeroUpgrade, wakeLogin],
                                                day: start, now: start.addingTimeInterval(600), calendar: calendar)
-        XCTAssertEqual(rows.map(\.kind), [.active, .lock, .lid, .lock])
-        XCTAssertEqual(rows.map { $0.duration(at: start.addingTimeInterval(600)) }, [60, 60, 60, 60])
-        XCTAssertEqual(rows[2].label, "Meal")
-        XCTAssertEqual(AppSettings.labelTitle(rows[2].label), "用餐")
+        XCTAssertEqual(rows.map(\.kind), [.lock, .active, .lock, .lid, .lock])
+        XCTAssertEqual(rows.map(\.lockOrigin), [.hotCorner, nil, .recentInput, nil, .other])
+        XCTAssertEqual(rows.map(\.title), ["触发角锁屏", "主动离座", "快捷键 / 菜单锁屏", "合盖离座", "锁屏离座"])
+        XCTAssertEqual(rows.map { $0.duration(at: start.addingTimeInterval(600)) }, [50, 60, 60, 60, 60])
+        XCTAssertEqual(rows[3].label, "Meal")
+        XCTAssertEqual(AppSettings.labelTitle(rows[3].label), "用餐")
     }
 
     func testSelectedDayReadsPastDiagnosticFeedLimit() throws {

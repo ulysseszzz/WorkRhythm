@@ -30,6 +30,9 @@ public struct ScreenRecord: Identifiable {
 }
 
 public struct DepartureRecord: Identifiable {
+    public enum LockOrigin: Equatable {
+        case recentInput, hotCorner, other
+    }
     public enum Kind: String {
         case active, lock, lid
         public var title: String {
@@ -51,8 +54,19 @@ public struct DepartureRecord: Identifiable {
     public let start: Date
     public let end: Date?
     public let kind: Kind
+    public let lockOrigin: LockOrigin?
     public let recovered: Bool
     public let label: String
+    public var title: String {
+        switch lockOrigin {
+        case .recentInput: return "快捷键 / 菜单锁屏"
+        case .hotCorner: return "触发角锁屏"
+        default: return kind.title
+        }
+    }
+    public var symbol: String {
+        lockOrigin == .recentInput ? "keyboard" : kind.symbol
+    }
     public func duration(at now: Date) -> TimeInterval { max(0, (end ?? now).timeIntervalSince(start)) }
     public init?(_ session: Session) {
         switch session.kind {
@@ -70,6 +84,13 @@ public struct DepartureRecord: Identifiable {
             return nil
         }
         guard session.end == nil || session.end! > session.start else { return nil }
+        if kind == .lock {
+            if session.trigger.hasPrefix("manual_lock_recent_input") { lockOrigin = .recentInput }
+            else if session.trigger.hasPrefix("hot_corner_lock:") { lockOrigin = .hotCorner }
+            else { lockOrigin = .other }
+        } else {
+            lockOrigin = nil
+        }
         id = session.id
         start = session.start
         end = session.end

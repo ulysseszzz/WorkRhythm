@@ -11,6 +11,8 @@ public struct DailySummary {
     public var breaks = 0
     public var lockLeaves = 0
     public var lidLeaves = 0
+    public var recentInputLockLeaves = 0
+    public var hotCornerLockLeaves = 0
     public var shortBreaks = 0
     public var longBreaks = 0
     public var averageWork: Double = 0
@@ -91,6 +93,12 @@ public enum StatisticsService {
         result.breaks = leaves.count
         result.lockLeaves = leaves.filter { $0.kind == .locked || ($0.kind == .away && $0.trigger.contains("lock")) }.count
         result.lidLeaves = leaves.filter { $0.kind == .moving }.count
+        result.recentInputLockLeaves = leaves.filter {
+            DepartureRecord($0)?.lockOrigin == .recentInput
+        }.count
+        result.hotCornerLockLeaves = leaves.filter {
+            DepartureRecord($0)?.lockOrigin == .hotCorner
+        }.count
         result.shortBreaks = complete.filter { $0.duration(at: now) < (settings.breakThresholds.sorted().dropFirst().first ?? 10) * 60 }.count
         result.longBreaks = complete.count - result.shortBreaks
         result.averageBreak = mean(lengths); result.shortestBreak = lengths.min() ?? 0; result.longestBreak = lengths.max() ?? 0

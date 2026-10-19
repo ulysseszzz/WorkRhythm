@@ -313,19 +313,23 @@ final class StateAndDataTests: XCTestCase {
             Session(kind: .away, start: midnight.addingTimeInterval(600),
                     end: midnight.addingTimeInterval(660), trigger: "manual_lock_recent_input"),
             Session(kind: .displaySleep, start: midnight.addingTimeInterval(720),
-                    end: midnight.addingTimeInterval(900), trigger: "automatic")
+                    end: midnight.addingTimeInterval(900), trigger: "automatic"),
+            Session(kind: .away, start: midnight.addingTimeInterval(900),
+                    end: midnight.addingTimeInterval(960), trigger: "hot_corner_lock:br")
         ]
         let summary = StatisticsService.summary(date: midnight, sessions: sessions, focuses: [],
                                                 hydration: [], settings: AppSettings(),
                                                 now: midnight.addingTimeInterval(1000), calendar: cal)
-        XCTAssertEqual(summary.away, 120)
+        XCTAssertEqual(summary.away, 180)
         XCTAssertEqual(summary.locked, 120)
         XCTAssertEqual(summary.moving, 180)
-        XCTAssertEqual(summary.leave, 420)
-        XCTAssertEqual(summary.breaks, 4)
-        XCTAssertEqual(summary.lockLeaves, 2)
+        XCTAssertEqual(summary.leave, 480)
+        XCTAssertEqual(summary.breaks, 5)
+        XCTAssertEqual(summary.lockLeaves, 3)
         XCTAssertEqual(summary.lidLeaves, 1)
-        XCTAssertEqual(summary.averageBreak, 105)
+        XCTAssertEqual(summary.recentInputLockLeaves, 1)
+        XCTAssertEqual(summary.hotCornerLockLeaves, 1)
+        XCTAssertEqual(summary.averageBreak, 96)
     }
     func testFocusPauseExcludesAwayAndPersists() throws {
         let repo = try repository(); let ledger = try SessionLedger(repository: repo)

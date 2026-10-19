@@ -290,6 +290,8 @@ struct DashboardPage: View {
                     MetricCard(title: "离座 · 含锁屏与合盖", value: DurationText.short(s.leave), color: .orange)
                     MetricCard(title: "锁屏 / 合盖离座", value: "\(DurationText.short(s.locked)) / \(DurationText.short(s.moving))", color: .purple)
                     MetricCard(title: "离座次数 · 锁屏 \(s.lockLeaves) / 合盖 \(s.lidLeaves)", value: "\(s.breaks)")
+                    MetricCard(title: "主动锁屏 · 快捷键/菜单 / 触发角",
+                               value: "\(s.recentInputLockLeaves) / \(s.hotCornerLockLeaves)")
                     MetricCard(title: "喝水 / 完成番茄钟", value: "\(s.water) / \(s.pomodoros)")
                 }
                 Text("连续性").font(.title2.weight(.semibold))

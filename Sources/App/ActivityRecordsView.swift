@@ -40,7 +40,7 @@ struct RecentActivityCard: View {
                     if departures.isEmpty { empty("还没有离座记录") }
                     ForEach(departures.prefix(compact ? 1 : 2)) { departure in
                         departureLine(departure)
-                            .help("\(clock(departure.start)) · \(departure.kind.title)")
+                            .help("\(clock(departure.start)) · \(departure.title)")
                     }
                 }
             }
@@ -61,7 +61,7 @@ struct RecentActivityCard: View {
         HStack(spacing: 7) {
             Text(recordTime(departure.start)).monospacedDigit().foregroundStyle(.secondary)
                 .frame(width: 37, alignment: .leading)
-            Text(departure.kind.title).lineLimit(1)
+            Text(departure.title).lineLimit(1)
             Spacer(minLength: 0)
             DepartureLabelMenu(app: app, departure: departure, compact: true)
             Text(departure.end == nil ? "进行中" : DurationText.short(departure.duration(at: app.now)))
@@ -119,6 +119,7 @@ struct ActivityRecordsPage: View {
         let departures = ActivityRecords.departures(app.sessions, day: day, now: app.now)
         let lockLeaves = departures.filter { $0.kind == .lock }.count
         let lidLeaves = departures.filter { $0.kind == .lid }.count
+        let recentInputLocks = departures.filter { $0.lockOrigin == .recentInput }.count
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 HStack {
@@ -135,6 +136,7 @@ struct ActivityRecordsPage: View {
                     MetricCard(title: "饮用次数", value: "\(drinks.count)")
                     MetricCard(title: "离座次数", value: "\(departures.count)", color: .orange)
                     MetricCard(title: "锁屏 / 合盖", value: "\(lockLeaves) / \(lidLeaves)")
+                    MetricCard(title: "快捷键 / 菜单锁屏", value: "\(recentInputLocks)")
                 }
                 HStack(alignment: .top, spacing: 16) {
                     recordColumn(title: "饮水", symbol: "drop.fill", count: drinks.count) {
@@ -154,8 +156,8 @@ struct ActivityRecordsPage: View {
                         ForEach(departures) { departure in
                             HStack(spacing: 10) {
                                 Text(clock(departure.start)).monospacedDigit().foregroundStyle(.secondary)
-                                Image(systemName: departure.kind.symbol).foregroundStyle(.orange).frame(width: 16)
-                                Text(departure.kind.title)
+                                Image(systemName: departure.symbol).foregroundStyle(.orange).frame(width: 16)
+                                Text(departure.title)
                                 Spacer(minLength: 0)
                                 DepartureLabelMenu(app: app, departure: departure)
                                 Text(departure.end == nil ? "进行中" : DurationText.short(departure.duration(at: app.now)))
@@ -166,7 +168,7 @@ struct ActivityRecordsPage: View {
                     }
                 }
                 HStack {
-                    Text("离座记录随时间线长期保留；解锁、开盖只结束离座，不重复计次。")
+                    Text("快捷键 / 菜单锁屏按锁屏前的近期输入推断；Touch ID 等无法区分的入口归入普通锁屏。")
                         .font(.caption).foregroundStyle(.secondary)
                     Spacer()
                     Button("查看时间线") { app.openPage?("timeline") }
