@@ -5,7 +5,7 @@
     <key>CFBundleExecutable</key><string>$(EXECUTABLE_NAME)</string>
     <key>CFBundleIdentifier</key><string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
     <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-    <key>CFBundleName</key><string>WorkRhythm</string>
+    <key>CFBundleName</key><string>工位节奏</string>
     <key>CFBundleDisplayName</key><string>工位节奏</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundlePackageType</key><string>APPL</string>
@@ -14,5 +14,5 @@
     <key>LSMinimumSystemVersion</key><string>14.0</string>
     <key>LSUIElement</key><true/>
     <key>NSHighResolutionCapable</key><true/>
-    <key>NSHumanReadableCopyright</key><string>WorkRhythm · Local-first workstation rhythm</string>
+    <key>NSHumanReadableCopyright</key><string>工位节奏 · 本地优先的工作节奏记录工具</string>
 </dict></plist>

@@ -108,7 +108,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
         if window == nil {
             let host = NSHostingController(rootView: MainView(app: controller, navigation: navigation))
             let window = NSWindow(contentViewController: host)
-            window.title = "工位节奏 · WorkRhythm"
+            window.title = "工位节奏"
             window.setContentSize(NSSize(width: 980, height: 740))
             window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
             window.isReleasedWhenClosed = false

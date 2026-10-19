@@ -230,7 +230,7 @@ struct TimelinePage: View {
                     }.font(.callout).foregroundStyle(.secondary)
                     if session.kind == .away {
                         HStack {
-                            Menu(session.label.isEmpty ? "添加标签" : session.label) {
+                            Menu(session.label.isEmpty ? "添加标签" : AppSettings.labelTitle(session.label)) {
                                 ForEach(AppSettings.labels, id: \.self) { label in Button(label) { app.label(session, label) } }
                                 Button("清除标签") { app.label(session, "") }
                             }.fixedSize()

@@ -134,7 +134,7 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
         configureNotifications()
     }
     func start() {
-        log("app_start", "version=1.1.0 build=15 schema=2; lock and lid count as departures")
+        log("app_start", "version=1.1.0 build=16 schema=2; Chinese interface and unified departures")
         monitor.start()
         startHeartbeat()
         checkpoint()
@@ -370,7 +370,7 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
             case .enabled: loginStatus = "已开启"
             case .requiresApproval: loginStatus = "等待系统设置批准"
             case .notRegistered: loginStatus = "已关闭"
-            case .notFound: loginStatus = "请先将 App 安装到 Applications"
+            case .notFound: loginStatus = "请先将应用安装到“应用程序”文件夹"
             @unknown default: loginStatus = "未知状态"
             }
         } catch { loginStatus = error.localizedDescription }

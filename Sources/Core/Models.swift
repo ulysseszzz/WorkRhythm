@@ -22,13 +22,13 @@ public enum SessionKind: String, Codable, CaseIterable {
     case work, away, moving, idle, systemSleep, displaySleep, locked, unknown
     public var title: String {
         switch self {
-        case .work: return "Work · 在工位"
-        case .away: return "Away · 离座"
-        case .moving: return "Away · 合盖离座"
-        case .idle: return "Idle · 静默"
-        case .systemSleep: return "System Sleep"
-        case .displaySleep: return "Display Sleep"
-        case .locked: return "Away · 锁屏离座"
+        case .work: return "在工位"
+        case .away: return "离座"
+        case .moving: return "合盖离座"
+        case .idle: return "静默 / 阅读"
+        case .systemSleep: return "系统睡眠"
+        case .displaySleep: return "显示器睡眠"
+        case .locked: return "锁屏离座"
         case .unknown: return "未观测区间"
         }
     }
@@ -142,11 +142,18 @@ public struct AppSettings: Codable, Equatable {
     public func classification(seconds: Double) -> String {
         let valid = breakThresholds.count == 4 ? breakThresholds.sorted() : [2, 10, 30, 90]
         let minutes = seconds / 60
-        return ["Micro Break", "Short Break", "Long Break", "Meal / Long Away Candidate", "Extended Away"][
+        return ["微休息", "短休息", "长休息", "用餐 / 较长离座", "超长离座"][
             valid.firstIndex(where: { minutes < $0 }) ?? 4
         ]
     }
-    public static let labels = ["Toilet", "Water", "Snack", "Meal", "Walk", "Talk", "Meeting", "Other"]
+    public static let labels = ["如厕", "接水", "加餐", "用餐", "散步", "交谈", "会议", "其他"]
+    public static func labelTitle(_ value: String) -> String {
+        let legacy = [
+            "Toilet": "如厕", "Water": "接水", "Snack": "加餐", "Meal": "用餐",
+            "Walk": "散步", "Talk": "交谈", "Meeting": "会议", "Other": "其他"
+        ]
+        return legacy[value] ?? value
+    }
 }
 
 public enum Input {
@@ -178,8 +185,14 @@ public struct Transition {
 public enum DurationText {
     public static func short(_ seconds: Double) -> String {
         let value = Int(max(0, seconds))
-        if value >= 3600 { return "\(value / 3600)h \(value % 3600 / 60)m" }
-        if value >= 60 { return "\(value / 60)m \(value % 60)s" }
-        return "\(value)s"
+        if value >= 3600 {
+            let minutes = value % 3600 / 60
+            return minutes == 0 ? "\(value / 3600)时" : "\(value / 3600)时 \(minutes)分"
+        }
+        if value >= 60 {
+            let remainder = value % 60
+            return remainder == 0 ? "\(value / 60)分" : "\(value / 60)分 \(remainder)秒"
+        }
+        return "\(value)秒"
     }
 }

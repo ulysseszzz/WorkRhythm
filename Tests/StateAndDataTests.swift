@@ -8,6 +8,14 @@ final class StateAndDataTests: XCTestCase {
         m.handle(.userActivity, at: start)
         return m
     }
+    func testChineseCompactDurationFormatting() {
+        XCTAssertEqual(DurationText.short(0), "0秒")
+        XCTAssertEqual(DurationText.short(59), "59秒")
+        XCTAssertEqual(DurationText.short(60), "1分")
+        XCTAssertEqual(DurationText.short(62), "1分 2秒")
+        XCTAssertEqual(DurationText.short(3600), "1时")
+        XCTAssertEqual(DurationText.short(4500), "1时 15分")
+    }
     func enter(_ m: WorkstationStateMachine, offset: Double = 0) {
         m.handle(.cornerEntered(name: "br", screen: "2", x: 1500, y: -600, uptime: 100 + offset), at: start.addingTimeInterval(offset))
     }

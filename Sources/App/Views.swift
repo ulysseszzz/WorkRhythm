@@ -70,7 +70,7 @@ struct FocusControls: View {
                 Text("开始专注").font(.headline)
                 HStack {
                     ForEach([25, 45, 60, 90], id: \.self) { minutes in
-                        Button("\(minutes)m") { app.startFocus(Double(minutes)) }
+                        Button("\(minutes)分") { app.startFocus(Double(minutes)) }
                             .disabled(!app.state.atDesk)
                     }
                 }
@@ -81,7 +81,7 @@ struct FocusControls: View {
     }
     private func focusTime(_ focus: FocusSession, at date: Date) -> some View {
         let remaining = max(0, focus.plannedDuration - focus.elapsed(at: date))
-        return Text("\(focus.pausedAt == nil ? "Focus" : "已暂停") · \(DurationText.short(remaining))")
+        return Text("\(focus.pausedAt == nil ? "专注" : "已暂停") · \(DurationText.short(remaining))")
             .font(.headline).monospacedDigit()
     }
 }
@@ -306,7 +306,7 @@ struct DashboardPage: View {
                     Spacer()
                     Text("最后离开 \(clock(s.lastLeave))")
                 }.font(.callout).foregroundStyle(.secondary)
-                Text("在工位是行为推断，包含 Idle；Focus 是它的子集。锁屏、合盖与主动离开统一计为离座，同时保留各自类型。设备睡眠与未观测不计为离座。")
+                Text("在工位是行为推断，包含阅读与静默；专注是它的子集。锁屏、合盖与主动离开统一计为离座，同时保留各自类型。设备睡眠与未观测不计为离座。")
                     .font(.caption).foregroundStyle(.secondary)
             }.padding(28)
         }.navigationTitle("今日")

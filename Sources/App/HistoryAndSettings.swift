@@ -24,7 +24,9 @@ struct HistoryPage: View {
                     Spacer()
                     DatePicker("", selection: $date, in: ...Date(), displayedComponents: .date).labelsHidden()
                     Picker("范围", selection: $scale) {
-                        ForEach(["Day", "Week", "Month"], id: \.self) { Text($0).tag($0) }
+                        Text("日").tag("Day")
+                        Text("周").tag("Week")
+                        Text("月").tag("Month")
                     }.pickerStyle(.segmented).frame(width: 220)
                 }
                 let values = summaries
@@ -229,13 +231,13 @@ struct SettingsPage: View {
                         Text(String(format: "%.1f 秒", app.settings.detectionWindow)).monospacedDigit().frame(width: 70)
                     }
                 }
-                Text("当前窗口 \(String(format: "%.2f", app.settings.effectiveWindow))s；\(app.settings.calibratedWindow == nil ? "默认 1.5s 尚未经过你的真实触发校准" : "已使用你确认的样本校准")。锁屏或息屏后另等待 1.25s 排除竞争性系统事件。")
+                Text("当前窗口 \(String(format: "%.2f", app.settings.effectiveWindow)) 秒；\(app.settings.calibratedWindow == nil ? "默认 1.5 秒，尚未经过你的真实触发校准" : "已使用你确认的样本校准")。锁屏或息屏后另等待 1.25 秒排除竞争性系统事件。")
                     .font(.caption).foregroundStyle(.secondary)
                 if let delta = app.machine.candidateAge, delta >= 0, delta <= 5 {
-                    Text("最近候选：进入角到锁屏 / 息屏 \(String(format: "%.3f", delta))s")
+                    Text("最近候选：进入角到锁屏 / 息屏 \(String(format: "%.3f", delta)) 秒")
                     Button("确认最近一次确实是触发角，并校准窗口") { app.calibrateFromLastCandidate() }
                 }
-                Text("锁屏角、⌃⌘Q 和 Apple 菜单手动锁屏都会开始离开，解锁结束；自动锁屏、屏保、系统睡眠和合盖不会。快捷键与菜单通过锁屏前 5 秒内的聚合输入推断，来源并非 macOS 直接提供。")
+                Text("所有锁屏与合盖都计为离座，解锁或开盖结束；触发角、⌃⌘Q 和 Apple 菜单锁屏会进一步标记为主动离座。自然息屏、屏保和系统睡眠不计为离座。")
                     .font(.caption).foregroundStyle(.secondary)
                 Stepper("静默阈值 \(Int(app.settings.idleMinutes)) 分钟", value: binding(\.idleMinutes), in: 1...60, step: 1)
             }
@@ -303,16 +305,16 @@ struct SettingsPage: View {
                 Toggle("久坐提醒", isOn: binding(\.sedentaryEnabled))
                 Stepper("连续在工位 \(Int(app.settings.sedentaryMinutes)) 分钟后提醒", value: binding(\.sedentaryMinutes), in: 15...180, step: 15)
                 Stepper("返回后等待 \(Int(app.settings.returnGraceSeconds / 60)) 分钟", value: binding(\.returnGraceSeconds), in: 60...180, step: 60)
-                Text("Away、Moving、锁屏、息屏、睡眠时不提醒。专注时暂停久坐提醒；喝水仅在额外超时一个完整喝水周期后提醒。").font(.caption).foregroundStyle(.secondary)
+                Text("离座、锁屏、合盖、息屏和睡眠时不提醒。专注时暂停久坐提醒；喝水仅在额外超时一个完整喝水周期后提醒。").font(.caption).foregroundStyle(.secondary)
                 HStack {
                     Text(app.notificationStatus).foregroundStyle(.secondary)
                     Button("允许系统通知") { app.requestNotifications() }
                     Button("通知设置") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension")!) }
                 }
             }
-            Section("Away 初步分类 · 分钟上界") {
+            Section("离座时长分类 · 分钟上界") {
                 ForEach(0..<4, id: \.self) { i in
-                    Stepper("\(["Micro", "Short", "Long", "Meal / Long Away Candidate"][i]) < \(Int(app.settings.breakThresholds[i])) 分钟",
+                    Stepper("\(["微休息", "短休息", "长休息", "用餐 / 较长离座"][i]) < \(Int(app.settings.breakThresholds[i])) 分钟",
                             value: Binding(get: { app.settings.breakThresholds[i] }, set: { value in
                         let lower = i == 0 ? 1 : app.settings.breakThresholds[i - 1] + 1
                         let upper = i == 3 ? 720 : app.settings.breakThresholds[i + 1] - 1
@@ -327,7 +329,7 @@ struct SettingsPage: View {
                     Text(app.loginStatus).foregroundStyle(.secondary)
                     Button("登录项设置") { SMAppService.openSystemSettingsLoginItems() }
                 }
-                Text("仅本地 SQLite。无需辅助功能、输入监控、自动化或屏幕录制权限。只监听鼠标事件与系统状态，读取输入空闲秒数；不读取键盘内容、截图、应用内容或剪贴板。")
+                Text("数据仅存储在本地 SQLite 数据库。无需辅助功能、输入监控、自动化或屏幕录制权限。只监听鼠标事件与系统状态，读取输入空闲秒数；不读取键盘内容、截图、应用内容或剪贴板。")
                     .font(.callout).foregroundStyle(.secondary)
                 Text(app.repository.url.path).font(.caption.monospaced()).textSelection(.enabled)
                 HStack {
@@ -354,12 +356,12 @@ struct DebugPage: View {
                 Button("刷新") { app.refreshEvents() }
                 Button("导出日志 JSON") { app.export("debug") }
             }
-            Text(verbatim: "状态：\(app.state.rawValue) · display=\(app.machine.displayAwake ? "awake" : "asleep") · systemSleep=\(app.machine.sleeping) · locked=\(app.machine.locked)")
+            Text(verbatim: "状态：\(app.state.title) · 屏幕=\(app.machine.displayAwake ? "亮起" : "熄灭") · 系统睡眠=\(app.machine.sleeping ? "是" : "否") · 锁屏=\(app.machine.locked ? "是" : "否")")
                 .font(.callout.monospaced())
             Text("鼠标回调 \(app.monitor.mouseEventCount) · 最后回调 \(clock(app.monitor.lastMouseEvent)) · IOKit 注册结果 \(app.monitor.lidRegistration) · 合盖 \(String(describing: app.monitor.lastLid))")
                 .font(.caption.monospaced()).foregroundStyle(.secondary)
             Text(app.lastDecision).font(.caption.monospaced()).textSelection(.enabled)
-            Text("验证：分别使用锁屏/息屏触发角、⌃⌘Q 和 Apple 菜单锁屏，返回后检查 classification / state_transition；再用自动锁屏、自然息屏、屏保、系统睡眠和合盖验证排除条件。")
+            Text("验证：分别使用锁屏 / 息屏触发角、⌃⌘Q、Apple 菜单锁屏和合盖，返回后检查分类与状态切换；再用自然息屏、屏保和系统睡眠验证排除条件。")
                 .font(.caption).foregroundStyle(.secondary)
             TextField("筛选日志", text: $filter)
             List(app.events.filter { filter.isEmpty || $0.type.localizedCaseInsensitiveContains(filter) || $0.metadata.localizedCaseInsensitiveContains(filter) }) { event in
