@@ -48,6 +48,17 @@ final class DayActivityTests: XCTestCase {
         XCTAssertEqual(activity.hours[9].duration(.focus), 1200)
         XCTAssertEqual(activity.hours[9].duration(.work), 1800)
     }
+    func testLockAndLidRemainDistinctDepartureKindsWhileSleepIsUnavailable() {
+        let sessions = [
+            Session(kind: .locked, start: time(60), end: time(70)),
+            Session(kind: .moving, start: time(70), end: time(80)),
+            Session(kind: .systemSleep, start: time(80), end: time(90))
+        ]
+        let activity = DayActivity(day: day, sessions: sessions, focuses: [], now: time(100), calendar: calendar)
+        XCTAssertEqual(activity.duration(.locked), 600)
+        XCTAssertEqual(activity.duration(.moving), 600)
+        XCTAssertEqual(activity.duration(.unavailable), 600)
+    }
     func testEmptyPastIsUnknownWhileFutureHasNoSpans() {
         let past = DayActivity(day: day, sessions: [], focuses: [], now: time(1440), calendar: calendar)
         XCTAssertEqual(past.duration(.unknown), 86400)

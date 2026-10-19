@@ -11,6 +11,7 @@ extension WorkstationState {
         case .active, .focus: return .teal
         case .away: return .orange
         case .moving: return .purple
+        case .locked: return .orange
         default: return .secondary
         }
     }
@@ -21,6 +22,7 @@ extension SessionKind {
         case .work: return .teal
         case .away: return .orange
         case .moving: return .purple
+        case .locked: return .orange
         case .idle: return .blue
         default: return .gray
         }
@@ -131,7 +133,7 @@ struct MenuContent: View {
                 Spacer()
                 summary("专注", DurationText.short(today.focus))
                 Spacer()
-                summary("离开", DurationText.short(today.away))
+                summary("离座", DurationText.short(today.leave))
             }
             }
             HStack {
@@ -213,7 +215,7 @@ struct MainView: View {
         NavigationSplitView {
             List(selection: $navigation.page) {
                 Label("今日", systemImage: "sun.max").tag("today")
-                Label("饮水与屏幕", systemImage: "clock").tag("records")
+                Label("饮水与离座", systemImage: "clock").tag("records")
                 Label("时间线", systemImage: "list.bullet.indent").tag("timeline")
                 Label("长期统计", systemImage: "chart.bar.xaxis").tag("history")
                 Label("设置", systemImage: "slider.horizontal.3").tag("settings")
@@ -263,7 +265,7 @@ struct DashboardPage: View {
                 if app.settings.corner == "auto" && app.monitor.configuration.departureCorners.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("先确认你的离开触发角").font(.headline)
-                        Text("支持“锁屏”或“使显示器进入睡眠”。通过触发角触发任一动作，都视为主动离开。")
+                        Text("支持“锁屏”或“使显示器进入睡眠”。锁屏、合盖和通过触发角主动息屏都计为离座。")
                         Button("打开设置与引导") { app.openPage?("settings") }
                     }.padding().frame(maxWidth: .infinity, alignment: .leading).background(.orange.opacity(0.12), in: RoundedRectangle(cornerRadius: 12))
                 }
@@ -285,17 +287,17 @@ struct DashboardPage: View {
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 170))], spacing: 12) {
                     MetricCard(title: "在工位 · 含阅读静默", value: DurationText.short(s.work), color: .teal)
                     MetricCard(title: "主动专注", value: DurationText.short(s.focus), color: .teal)
-                    MetricCard(title: "主动离开", value: DurationText.short(s.away), color: .orange)
-                    MetricCard(title: "合盖 / 可能移动", value: DurationText.short(s.moving), color: .purple)
-                    MetricCard(title: "休息次数", value: "\(s.breaks)")
+                    MetricCard(title: "离座 · 含锁屏与合盖", value: DurationText.short(s.leave), color: .orange)
+                    MetricCard(title: "锁屏 / 合盖离座", value: "\(DurationText.short(s.locked)) / \(DurationText.short(s.moving))", color: .purple)
+                    MetricCard(title: "离座次数 · 锁屏 \(s.lockLeaves) / 合盖 \(s.lidLeaves)", value: "\(s.breaks)")
                     MetricCard(title: "喝水 / 完成番茄钟", value: "\(s.water) / \(s.pomodoros)")
                 }
                 Text("连续性").font(.title2.weight(.semibold))
                 LazyVGrid(columns: [GridItem(.adaptive(minimum: 170))], spacing: 12) {
                     MetricCard(title: "最长连续在工位", value: DurationText.short(s.longestWork))
                     MetricCard(title: "平均工作区间", value: DurationText.short(s.averageWork))
-                    MetricCard(title: "平均离开间隔", value: s.averageInterval > 0 ? DurationText.short(s.averageInterval) : "—")
-                    MetricCard(title: "平均离开时长", value: DurationText.short(s.averageBreak))
+                    MetricCard(title: "平均离座间隔", value: s.averageInterval > 0 ? DurationText.short(s.averageInterval) : "—")
+                    MetricCard(title: "平均离座时长", value: DurationText.short(s.averageBreak))
                     MetricCard(title: "短休 / 长休（已完成）", value: "\(s.shortBreaks) / \(s.longBreaks)")
                     MetricCard(title: "阅读 / 无操作", value: DurationText.short(s.idle))
                 }
@@ -304,7 +306,7 @@ struct DashboardPage: View {
                     Spacer()
                     Text("最后离开 \(clock(s.lastLeave))")
                 }.font(.callout).foregroundStyle(.secondary)
-                Text("在工位是行为推断，包含 Idle；Focus 是它的子集。合盖表示可能移动，无法证明物理位置变化。未观测、锁屏和设备睡眠不算在工位。")
+                Text("在工位是行为推断，包含 Idle；Focus 是它的子集。锁屏、合盖与主动离开统一计为离座，同时保留各自类型。设备睡眠与未观测不计为离座。")
                     .font(.caption).foregroundStyle(.secondary)
             }.padding(28)
         }.navigationTitle("今日")

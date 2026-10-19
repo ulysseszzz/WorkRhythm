@@ -8,6 +8,7 @@ extension DayActivityKind {
         case .idle: return Color(red: 0.50, green: 0.72, blue: 0.38)
         case .away: return .orange
         case .moving: return .purple
+        case .locked: return Color(red: 0.86, green: 0.45, blue: 0.24)
         case .unavailable: return .gray
         case .unknown: return Color(nsColor: .separatorColor).opacity(0.45)
         }
@@ -19,7 +20,7 @@ struct HourlyActivityChart: View {
     let now: Date
     @Binding var selectedHour: Date?
     private let height: CGFloat = 180
-    static let legend: [DayActivityKind] = [.work, .focus, .idle, .away, .moving, .unavailable, .unknown]
+    static let legend: [DayActivityKind] = [.work, .focus, .idle, .away, .locked, .moving, .unavailable, .unknown]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -122,7 +123,9 @@ struct TimelinePage: View {
                     MetricCard(title: "在工位 · 含专注与静默",
                                value: DurationText.short(activity.duration(.work) + activity.duration(.focus) + activity.duration(.idle)), color: .teal)
                     MetricCard(title: "其中专注", value: DurationText.short(activity.duration(.focus)), color: .indigo)
-                    MetricCard(title: "主动离开", value: DurationText.short(activity.duration(.away)), color: .orange)
+                    MetricCard(title: "离座 · 含锁屏与合盖",
+                               value: DurationText.short(activity.duration(.away) + activity.duration(.locked) + activity.duration(.moving)),
+                               color: .orange)
                 }
                 HourlyActivityChart(activity: activity, now: app.now, selectedHour: $selectedHour)
                 if let hour = activity.hours.first(where: { $0.id == selectedHour }) {

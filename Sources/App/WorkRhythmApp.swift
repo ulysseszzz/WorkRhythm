@@ -78,9 +78,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             }
         } else {
             displayTimer?.invalidate(); displayTimer = nil
-            item?.button?.title = controller.state == .away ? " 离开" : controller.state == .moving ? " 合盖" : ""
+            item?.button?.title = controller.state == .away ? " 离座" :
+                controller.state == .moving ? " 合盖" : controller.state == .locked ? " 锁屏" : ""
         }
-        item?.button?.toolTip = "工位节奏 · \(controller.state.title) · 今日 \(controller.today.breaks) 次休息"
+        item?.button?.toolTip = "工位节奏 · \(controller.state.title) · 今日 \(controller.today.breaks) 次离座"
     }
     private func updateCountdown() {
         guard let focus = controller?.currentFocus, focus.pausedAt == nil else {

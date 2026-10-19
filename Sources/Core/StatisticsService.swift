@@ -6,8 +6,11 @@ public struct DailySummary {
     public var focus: Double = 0
     public var away: Double = 0
     public var moving: Double = 0
+    public var locked: Double = 0
     public var idle: Double = 0
     public var breaks = 0
+    public var lockLeaves = 0
+    public var lidLeaves = 0
     public var shortBreaks = 0
     public var longBreaks = 0
     public var averageWork: Double = 0
@@ -27,6 +30,7 @@ public struct DailySummary {
     public var pomodoros = 0
     public var hourly: [Int] = Array(repeating: 0, count: 24)
     public var breaksPerWorkHour: Double { work > 0 ? Double(breaks) / (work / 3600) : 0 }
+    public var leave: Double { away + moving + locked }
 }
 
 public enum StatisticsService {
@@ -53,14 +57,20 @@ public enum StatisticsService {
             case .work: result.work += duration; if !s.recovered { workDurations.append(duration) }
             case .away: result.away += duration
             case .moving: result.moving += duration
+            case .locked: result.locked += duration
             case .idle: result.idle += duration
             default: break
             }
         }
-        let leaves = sessions.filter { $0.kind == .away && inside($0.start) }.sorted { $0.start < $1.start }
+        // A lock can be upgraded to an inferred manual leave at the same timestamp.
+        // Return-side login screens and zero-length intermediate sessions are not new departures.
+        let leaves = sessions.filter { DepartureRecord($0) != nil && inside($0.start) }
+            .sorted { $0.start < $1.start }
         let complete = leaves.filter { $0.end != nil && !$0.recovered }
         let lengths = complete.map { $0.duration(at: now) }
         result.breaks = leaves.count
+        result.lockLeaves = leaves.filter { $0.kind == .locked || ($0.kind == .away && $0.trigger.contains("lock")) }.count
+        result.lidLeaves = leaves.filter { $0.kind == .moving }.count
         result.shortBreaks = complete.filter { $0.duration(at: now) < (settings.breakThresholds.sorted().dropFirst().first ?? 10) * 60 }.count
         result.longBreaks = complete.count - result.shortBreaks
         result.averageBreak = mean(lengths); result.shortestBreak = lengths.min() ?? 0; result.longestBreak = lengths.max() ?? 0

@@ -7,11 +7,11 @@ public enum WorkstationState: String, Codable, CaseIterable {
         case .active: return "在工位"
         case .focus: return "专注"
         case .idle: return "静默 / 阅读"
-        case .away: return "主动离开"
-        case .moving: return "合盖 / 可能移动"
+        case .away: return "离座"
+        case .moving: return "合盖离座"
         case .systemSleep: return "系统睡眠"
         case .displaySleep: return "显示器睡眠"
-        case .locked: return "锁屏"
+        case .locked: return "锁屏离座"
         case .unknown: return "未观测"
         }
     }
@@ -23,12 +23,12 @@ public enum SessionKind: String, Codable, CaseIterable {
     public var title: String {
         switch self {
         case .work: return "Work · 在工位"
-        case .away: return "Away · 主动离开"
-        case .moving: return "Moving · 合盖"
+        case .away: return "Away · 离座"
+        case .moving: return "Away · 合盖离座"
         case .idle: return "Idle · 静默"
         case .systemSleep: return "System Sleep"
         case .displaySleep: return "Display Sleep"
-        case .locked: return "Locked · 锁屏"
+        case .locked: return "Away · 锁屏离座"
         case .unknown: return "未观测区间"
         }
     }

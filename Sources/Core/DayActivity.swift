@@ -2,15 +2,16 @@ import Foundation
 
 /// Mutually exclusive display categories. Focus/idle refine work rather than adding time to it.
 public enum DayActivityKind: Int, CaseIterable {
-    case unknown, work, idle, focus, unavailable, moving, away
+    case unknown, work, idle, focus, unavailable, locked, moving, away
     public var title: String {
         switch self {
         case .work: return "在工位"
         case .focus: return "专注"
         case .idle: return "阅读 / 静默"
-        case .away: return "主动离开"
-        case .moving: return "合盖"
-        case .unavailable: return "锁屏 / 睡眠"
+        case .away: return "离座"
+        case .moving: return "合盖离座"
+        case .locked: return "锁屏离座"
+        case .unavailable: return "设备睡眠"
         case .unknown: return "未记录"
         }
     }
@@ -20,7 +21,8 @@ public enum DayActivityKind: Int, CaseIterable {
         case .idle: return .idle
         case .away: return .away
         case .moving: return .moving
-        case .locked, .displaySleep, .systemSleep: return .unavailable
+        case .locked: return .locked
+        case .displaySleep, .systemSleep: return .unavailable
         case .unknown: return .unknown
         }
     }

@@ -134,7 +134,7 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
         configureNotifications()
     }
     func start() {
-        log("app_start", "version=1.1.0 build=14 schema=2; garden overview and activity records")
+        log("app_start", "version=1.1.0 build=15 schema=2; lock and lid count as departures")
         monitor.start()
         startHeartbeat()
         checkpoint()

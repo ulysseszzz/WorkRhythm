@@ -54,6 +54,27 @@ final class ActivityRecordsTests: XCTestCase {
         XCTAssertNil(ScreenRecord(SystemEvent(timestamp: day, type: "system_event", metadata: "newUnknownInput")))
     }
 
+    func testDeparturesIncludeLockLidAndActiveButExcludeReturnAndZeroLengthUpgrade() {
+        let start = calendar.startOfDay(for: day)
+        let locked = Session(kind: .locked, start: start.addingTimeInterval(60),
+                             end: start.addingTimeInterval(120), trigger: "lock")
+        let lid = Session(kind: .moving, start: start.addingTimeInterval(180),
+                          end: start.addingTimeInterval(240), trigger: "lid_closed_possible_moving")
+        let manualLock = Session(kind: .away, start: start.addingTimeInterval(300),
+                                 end: start.addingTimeInterval(360), trigger: "manual_lock_recent_input")
+        let activeLeave = Session(kind: .away, start: start.addingTimeInterval(420),
+                                  end: start.addingTimeInterval(480), trigger: "hot_corner:br")
+        let zeroUpgrade = Session(kind: .locked, start: start.addingTimeInterval(300),
+                                  end: start.addingTimeInterval(300), trigger: "lock")
+        let wakeLogin = Session(kind: .locked, start: start.addingTimeInterval(500),
+                                end: start.addingTimeInterval(510), trigger: "display_wake")
+        let work = Session(kind: .work, start: start, end: start.addingTimeInterval(30))
+        let rows = ActivityRecords.departures([work, locked, lid, manualLock, activeLeave, zeroUpgrade, wakeLogin],
+                                               day: start, now: start.addingTimeInterval(600), calendar: calendar)
+        XCTAssertEqual(rows.map(\.kind), [.active, .lock, .lid, .lock])
+        XCTAssertEqual(rows.map { $0.duration(at: start.addingTimeInterval(600)) }, [60, 60, 60, 60])
+    }
+
     func testSelectedDayReadsPastDiagnosticFeedLimit() throws {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: folder) }

@@ -369,6 +369,22 @@ struct RenderPreview {
                                    (-1800.0, "displayWake"), (-1799.0, "unlock")] {
             sliderApp.log("system_event", metadata, at: sliderApp.now.addingTimeInterval(offset))
         }
+        for (offset, state, reason) in [
+            (-5400.0, WorkstationState.active, "preview_return"),
+            (-4800.0, .locked, "lock"),
+            (-4500.0, .active, "unlock"),
+            (-3000.0, .moving, "lid_closed_possible_moving"),
+            (-2700.0, .active, "lid_open_return"),
+            (-1200.0, .away, "hot_corner:br"),
+            (-900.0, .active, "display_wake")
+        ] {
+            try sliderApp.ledger.transition(Transition(state: state, at: sliderApp.now.addingTimeInterval(offset),
+                                                       reason: reason, confidence: 1))
+        }
+        sliderApp.revision += 1
+        let departureSummary = sliderApp.summary(sliderApp.now)
+        precondition(departureSummary.breaks == 3 && departureSummary.lockLeaves == 1 && departureSummary.lidLeaves == 1)
+        precondition(ActivityRecords.departures(sliderApp.sessions, day: sliderApp.now, now: sliderApp.now).count == 3)
         sliderApp.recordSliderDrink(.coffee, amountML: 600)
         sliderApp.recordSliderDrink(.milkTea, amountML: 600)
         sliderApp.recordSliderDrink(.waterBottle, amountML: 300)
@@ -472,7 +488,7 @@ struct RenderPreview {
             natural.layoutSubtreeIfNeeded()
             precondition(natural.fittingSize.height <= height, "Dense menu + focus + reminder must fit")
         }
-        try "PASS: native chooser, select without saving, confirm once, remembered quick record, undo, flower calendar and full records navigation; dense layout with focus/reminder/error."
+        try "PASS: native chooser, select without saving, confirm once, remembered quick record, undo, flower calendar and full records navigation; lock, lid and active departure records/counts; dense layout with focus/reminder/error."
             .write(to: output.appendingPathComponent("interaction-result.txt"), atomically: true, encoding: .utf8)
         try Data("PASS: garden trophy persistence and four-day calendar in light/dark; six drinks, four-stop slider, invalid/off-grid rejected, tea150 milk600 persisted, matcha undo/restart, twelve recipe artwork previews; main menu no NSScrollView and natural contents fit 440/380pt; legacy timeline/cache/hydration regression. Live animation/visibility: \(canCheckLiveAnimation ? "PASS" : "SKIPPED (window occluded)")".utf8)
             .write(to: output.appendingPathComponent("result.txt"))

@@ -14,7 +14,7 @@ struct RecentActivityCard: View {
     var compact = false
     var body: some View {
         let drinks = ActivityRecords.drinks(app.water, day: app.now, now: app.now)
-        let screens = app.screenRecords(app.now)
+        let departures = ActivityRecords.departures(app.sessions, day: app.now, now: app.now)
         VStack(alignment: .leading, spacing: 5) {
             HStack {
                 Text("今日记录").font(.system(size: 11, weight: .semibold))
@@ -35,12 +35,13 @@ struct RecentActivityCard: View {
             }
             Divider().opacity(0.5)
             HStack(alignment: .top, spacing: 8) {
-                Image(systemName: "display").foregroundStyle(.secondary).frame(width: 15).padding(.top, 2)
+                Image(systemName: "figure.walk").foregroundStyle(.orange).frame(width: 15).padding(.top, 2)
                 VStack(spacing: 3) {
-                    if screens.isEmpty { empty("还没有屏幕变化") }
-                    ForEach(screens.prefix(compact ? 1 : 2)) { screen in
-                        line(time: recordTime(screen.timestamp), title: screen.title, value: "")
-                            .help("\(clock(screen.timestamp)) · \(screen.title)")
+                    if departures.isEmpty { empty("还没有离座记录") }
+                    ForEach(departures.prefix(compact ? 1 : 2)) { departure in
+                        line(time: recordTime(departure.start), title: departure.kind.title,
+                             value: departure.end == nil ? "进行中" : DurationText.short(departure.duration(at: app.now)))
+                            .help("\(clock(departure.start)) · \(departure.kind.title)")
                     }
                 }
             }
@@ -64,13 +65,15 @@ struct ActivityRecordsPage: View {
     @ViewState var day = Date()
     var body: some View {
         let drinks = ActivityRecords.drinks(app.water, day: day, now: app.now)
-        let screens = app.screenRecords(day)
+        let departures = ActivityRecords.departures(app.sessions, day: day, now: app.now)
+        let lockLeaves = departures.filter { $0.kind == .lock }.count
+        let lidLeaves = departures.filter { $0.kind == .lid }.count
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 HStack {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("饮水与屏幕记录").font(.largeTitle.weight(.semibold))
-                        Text("按时间回看每一次饮用与屏幕变化。").foregroundStyle(.secondary)
+                        Text("饮水与离座记录").font(.largeTitle.weight(.semibold))
+                        Text("锁屏、合盖与主动离开都计为离座。").foregroundStyle(.secondary)
                     }
                     Spacer()
                     DatePicker("", selection: $day, in: ...Date(), displayedComponents: .date).labelsHidden()
@@ -79,7 +82,8 @@ struct ActivityRecordsPage: View {
                 HStack(spacing: 12) {
                     MetricCard(title: "饮用总量", value: "\(drinks.compactMap(\.amountML).reduce(0, +)) mL", color: .teal)
                     MetricCard(title: "饮用次数", value: "\(drinks.count)")
-                    MetricCard(title: "屏幕事件", value: "\(screens.count)")
+                    MetricCard(title: "离座次数", value: "\(departures.count)", color: .orange)
+                    MetricCard(title: "锁屏 / 合盖", value: "\(lockLeaves) / \(lidLeaves)")
                 }
                 HStack(alignment: .top, spacing: 16) {
                     recordColumn(title: "饮水", symbol: "drop.fill", count: drinks.count) {
@@ -94,28 +98,29 @@ struct ActivityRecordsPage: View {
                             Divider()
                         }
                     }
-                    recordColumn(title: "屏幕", symbol: "display", count: screens.count) {
-                        if screens.isEmpty { placeholder("这一天没有可用的屏幕事件", symbol: "display") }
-                        ForEach(screens) { screen in
+                    recordColumn(title: "离座", symbol: "figure.walk", count: departures.count) {
+                        if departures.isEmpty { placeholder("这一天没有离座记录", symbol: "figure.walk") }
+                        ForEach(departures) { departure in
                             HStack(spacing: 10) {
-                                Text(clock(screen.timestamp)).monospacedDigit().foregroundStyle(.secondary)
-                                Image(systemName: screen.symbol)
-                                    .foregroundStyle(screen.inactive ? Color.secondary : .teal).frame(width: 16)
-                                Text(screen.title)
+                                Text(clock(departure.start)).monospacedDigit().foregroundStyle(.secondary)
+                                Image(systemName: departure.kind.symbol).foregroundStyle(.orange).frame(width: 16)
+                                Text(departure.kind.title)
                                 Spacer(minLength: 0)
+                                Text(departure.end == nil ? "进行中" : DurationText.short(departure.duration(at: app.now)))
+                                    .foregroundStyle(.secondary).monospacedDigit()
                             }.font(.system(size: 12)).padding(.vertical, 9)
                             Divider()
                         }
                     }
                 }
                 HStack {
-                    Text("屏幕事件保留最近 30 天；工位与离开区间可在时间线长期查看。")
+                    Text("离座记录随时间线长期保留；解锁、开盖只结束离座，不重复计次。")
                         .font(.caption).foregroundStyle(.secondary)
                     Spacer()
                     Button("查看时间线") { app.openPage?("timeline") }
                 }
             }.padding(24)
-        }.navigationTitle("饮水与屏幕记录")
+        }.navigationTitle("饮水与离座记录")
     }
     private func recordColumn<Content: View>(title: String, symbol: String, count: Int,
                                              @ViewBuilder content: () -> Content) -> some View {

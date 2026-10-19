@@ -101,10 +101,10 @@ public final class WorkstationStateMachine {
             let pendingAt = pending?.at
             pending = nil
             let competing = lastAway.map { at.timeIntervalSince($0) < 3 } ?? false
-            if !lidClosed && (state != .away || competing) {
+            if !lidClosed && ((state != .away && state != .locked) || competing) {
                 transition(.systemSleep, pendingAt ?? at, "system_sleep", rollback: competing)
             }
-            diagnose("system_sleep; pending hot corner cancelled; established Away preserved", at: at)
+            diagnose("system_sleep; pending hot corner cancelled; established departure preserved", at: at)
         case .systemWake:
             sleeping = false; candidate = nil
             // A dark/maintenance wake is not proof of a person's return.

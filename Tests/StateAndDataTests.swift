@@ -189,6 +189,19 @@ final class StateAndDataTests: XCTestCase {
         m.handle(.displayWake, at: start.addingTimeInterval(401))
         XCTAssertEqual(m.state, .active)
     }
+    func testEstablishedLockSurvivesSystemSleepUntilUnlock() {
+        let m = machine(); var transitions: [WorkstationState] = []
+        m.onTransition = { transitions.append($0.state) }
+        m.handle(.lock, at: start.addingTimeInterval(1))
+        m.handle(.systemSleep, at: start.addingTimeInterval(10))
+        m.handle(.systemWake, at: start.addingTimeInterval(100))
+        m.handle(.displayWake, at: start.addingTimeInterval(101))
+        XCTAssertEqual(m.state, .locked)
+        XCTAssertEqual(transitions.filter { $0 == .locked }.count, 1)
+        XCTAssertFalse(transitions.contains(.systemSleep))
+        m.handle(.unlock, at: start.addingTimeInterval(105))
+        XCTAssertEqual(m.state, .active)
+    }
     func testClamshellWithExternalInputStopsMoving() {
         let m = machine(); m.handle(.lidClosed, at: start)
         XCTAssertEqual(m.state, .moving)
@@ -276,6 +289,35 @@ final class StateAndDataTests: XCTestCase {
         let after = StatisticsService.summary(date: midnight, sessions: [s], focuses: [], hydration: [], settings: AppSettings(), now: midnight.addingTimeInterval(600), calendar: cal)
         XCTAssertEqual(before.away, 120); XCTAssertEqual(before.breaks, 1)
         XCTAssertEqual(after.away, 300); XCTAssertEqual(after.breaks, 0)
+    }
+    func testLockAndLidAreCountedAsDeparturesWithoutDoubleCountingLockUpgrade() {
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = TimeZone(secondsFromGMT: 0)!
+        let midnight = cal.startOfDay(for: start)
+        let sessions = [
+            Session(kind: .away, start: midnight.addingTimeInterval(60),
+                    end: midnight.addingTimeInterval(120), trigger: "hot_corner:br"),
+            Session(kind: .locked, start: midnight.addingTimeInterval(180),
+                    end: midnight.addingTimeInterval(300), trigger: "lock"),
+            Session(kind: .moving, start: midnight.addingTimeInterval(360),
+                    end: midnight.addingTimeInterval(540), trigger: "lid_closed_possible_moving"),
+            Session(kind: .locked, start: midnight.addingTimeInterval(600),
+                    end: midnight.addingTimeInterval(600), trigger: "lock"),
+            Session(kind: .away, start: midnight.addingTimeInterval(600),
+                    end: midnight.addingTimeInterval(660), trigger: "manual_lock_recent_input"),
+            Session(kind: .displaySleep, start: midnight.addingTimeInterval(720),
+                    end: midnight.addingTimeInterval(900), trigger: "automatic")
+        ]
+        let summary = StatisticsService.summary(date: midnight, sessions: sessions, focuses: [],
+                                                hydration: [], settings: AppSettings(),
+                                                now: midnight.addingTimeInterval(1000), calendar: cal)
+        XCTAssertEqual(summary.away, 120)
+        XCTAssertEqual(summary.locked, 120)
+        XCTAssertEqual(summary.moving, 180)
+        XCTAssertEqual(summary.leave, 420)
+        XCTAssertEqual(summary.breaks, 4)
+        XCTAssertEqual(summary.lockLeaves, 2)
+        XCTAssertEqual(summary.lidLeaves, 1)
+        XCTAssertEqual(summary.averageBreak, 105)
     }
     func testFocusPauseExcludesAwayAndPersists() throws {
         let repo = try repository(); let ledger = try SessionLedger(repository: repo)
