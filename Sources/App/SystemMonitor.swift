@@ -29,6 +29,7 @@ struct HotCornerConfiguration: Equatable {
 final class SystemMonitor {
     var receive: ((Input, Date) -> Void)?
     var diagnostic: ((String, String) -> Void)?
+    var activeDisplayChanged: ((String) -> Void)?
     var settings = AppSettings() {
         didSet {
             if oldValue.corner != settings.corner {
@@ -56,6 +57,7 @@ final class SystemMonitor {
     private var settleTask: DispatchWorkItem?
     private var lastObservedIdle = false
     private var started = false
+    private var activeDisplay: String?
 
     var idleSeconds: Double {
         let anyInput = CGEventType(rawValue: UInt32.max)!
@@ -84,6 +86,7 @@ final class SystemMonitor {
         }
         rebuildTargets()
         inside = nil
+        reportActiveDisplay(at: NSEvent.mouseLocation)
         receive?(.cornerExited, Date())
     }
     private func rebuildTargets() {
@@ -94,12 +97,19 @@ final class SystemMonitor {
     private func matchedCorner(point: CGPoint, modifiers: UInt) -> (String, String)? {
         HotCornerGeometry.match(point: point, targets: cornerTargets, modifiers: modifiers)
     }
+    private func reportActiveDisplay(at point: CGPoint) {
+        guard let display = frames.first(where: { $0.1.contains(point) })?.0,
+              display != activeDisplay else { return }
+        activeDisplay = display
+        activeDisplayChanged?(display)
+    }
     private func mouse(_ event: NSEvent) {
         mouseEventCount += 1
         if mouseEventCount == 1 { diagnostic?("mouse_listener_alive", "first mouse event delivered; no keyboard monitor registered") }
         let now = Date()
         lastMouseEvent = now
         let point = NSEvent.mouseLocation
+        reportActiveDisplay(at: point)
         if let (corner, screen) = matchedCorner(point: point, modifiers: event.modifierFlags.rawValue) {
             let identity = "\(screen):\(corner)"
             if inside != identity {

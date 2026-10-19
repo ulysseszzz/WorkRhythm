@@ -32,11 +32,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             self.controller = controller
             controller.openPage = { [weak self] in self?.showPage($0) }
             controller.statusChanged = { [weak self] in self?.updateStatus() }
-            let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+            controller.monitor.activeDisplayChanged = { [weak self] _ in self?.activeDisplayChanged() }
+            let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
             self.item = item
+            item.autosaveName = "WorkRhythmStatusItem"
+            item.isVisible = true
             item.button?.target = self
             item.button?.action = #selector(togglePopover)
-            item.button?.image = NSImage(systemSymbolName: "circle.dotted.circle", accessibilityDescription: "工位节奏")
+            if let image = NSImage(systemSymbolName: "circle.dotted.circle", accessibilityDescription: "工位节奏") {
+                image.isTemplate = true
+                item.button?.image = image
+            }
+            item.button?.imagePosition = .imageOnly
+            item.button?.title = ""
             popover.behavior = .transient
             popover.delegate = self
             controller.start()
@@ -78,10 +86,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             }
         } else {
             displayTimer?.invalidate(); displayTimer = nil
-            item?.button?.title = controller.state == .away ? " 离座" :
-                controller.state == .moving ? " 合盖" : controller.state == .locked ? " 锁屏" : ""
+            updateToolTip()
         }
-        item?.button?.toolTip = "工位节奏 · \(controller.state.title) · 今日 \(controller.today.breaks) 次离座"
     }
     private func updateCountdown() {
         guard let focus = controller?.currentFocus, focus.pausedAt == nil else {
@@ -89,8 +95,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate, NSW
             return
         }
         let remaining = max(0, Int(focus.plannedDuration - focus.elapsed(at: Date())))
-        let title = String(format: " %02d:%02d", remaining / 60, remaining % 60)
-        if item?.button?.title != title { item?.button?.title = title }
+        let countdown = String(format: "%02d:%02d", remaining / 60, remaining % 60)
+        updateToolTip(suffix: " · 专注 \(countdown)")
+    }
+    private func updateToolTip(suffix: String = "") {
+        guard let controller else { return }
+        item?.button?.toolTip = "工位节奏 · \(controller.state.title) · 今日 \(controller.today.breaks) 次离座\(suffix)"
+    }
+    private func activeDisplayChanged() {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in self?.activeDisplayChanged() }
+            return
+        }
+        guard let item else { return }
+        if popover.isShown { popover.performClose(nil) }
+        item.length = NSStatusItem.squareLength
+        item.isVisible = true
+        item.button?.title = ""
     }
     func popoverDidClose(_ notification: Notification) {
         if !popover.isShown { popover.contentViewController = nil }
