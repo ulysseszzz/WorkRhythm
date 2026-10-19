@@ -58,8 +58,9 @@ final class ActivityRecordsTests: XCTestCase {
         let start = calendar.startOfDay(for: day)
         let locked = Session(kind: .locked, start: start.addingTimeInterval(60),
                              end: start.addingTimeInterval(120), trigger: "lock")
-        let lid = Session(kind: .moving, start: start.addingTimeInterval(180),
+        var lid = Session(kind: .moving, start: start.addingTimeInterval(180),
                           end: start.addingTimeInterval(240), trigger: "lid_closed_possible_moving")
+        lid.label = "Meal"
         let manualLock = Session(kind: .away, start: start.addingTimeInterval(300),
                                  end: start.addingTimeInterval(360), trigger: "manual_lock_recent_input")
         let activeLeave = Session(kind: .away, start: start.addingTimeInterval(420),
@@ -73,6 +74,8 @@ final class ActivityRecordsTests: XCTestCase {
                                                day: start, now: start.addingTimeInterval(600), calendar: calendar)
         XCTAssertEqual(rows.map(\.kind), [.active, .lock, .lid, .lock])
         XCTAssertEqual(rows.map { $0.duration(at: start.addingTimeInterval(600)) }, [60, 60, 60, 60])
+        XCTAssertEqual(rows[2].label, "Meal")
+        XCTAssertEqual(AppSettings.labelTitle(rows[2].label), "用餐")
     }
 
     func testSelectedDayReadsPastDiagnosticFeedLimit() throws {

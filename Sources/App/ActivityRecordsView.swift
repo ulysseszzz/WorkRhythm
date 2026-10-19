@@ -39,8 +39,7 @@ struct RecentActivityCard: View {
                 VStack(spacing: 3) {
                     if departures.isEmpty { empty("还没有离座记录") }
                     ForEach(departures.prefix(compact ? 1 : 2)) { departure in
-                        line(time: recordTime(departure.start), title: departure.kind.title,
-                             value: departure.end == nil ? "进行中" : DurationText.short(departure.duration(at: app.now)))
+                        departureLine(departure)
                             .help("\(clock(departure.start)) · \(departure.kind.title)")
                     }
                 }
@@ -57,6 +56,58 @@ struct RecentActivityCard: View {
             Spacer(minLength: 0)
             Text(value).foregroundStyle(.secondary).monospacedDigit()
         }.frame(height: 15)
+    }
+    private func departureLine(_ departure: DepartureRecord) -> some View {
+        HStack(spacing: 7) {
+            Text(recordTime(departure.start)).monospacedDigit().foregroundStyle(.secondary)
+                .frame(width: 37, alignment: .leading)
+            Text(departure.kind.title).lineLimit(1)
+            Spacer(minLength: 0)
+            DepartureLabelMenu(app: app, departure: departure, compact: true)
+            Text(departure.end == nil ? "进行中" : DurationText.short(departure.duration(at: app.now)))
+                .foregroundStyle(.secondary).monospacedDigit()
+        }.frame(height: 15)
+    }
+}
+
+struct DepartureLabelMenu: View {
+    @ObservedObject var app: AppController
+    let departure: DepartureRecord
+    var compact = false
+    private var title: String? {
+        departure.label.isEmpty ? nil : AppSettings.labelTitle(departure.label)
+    }
+    var body: some View {
+        Menu {
+            ForEach(AppSettings.labels, id: \.self) { label in
+                Button {
+                    app.label(departure.id, label)
+                } label: {
+                    if title == label { Label(label, systemImage: "checkmark") }
+                    else { Text(label) }
+                }
+            }
+            if title != nil {
+                Divider()
+                Button("清除标签") { app.label(departure.id, "") }
+            }
+        } label: {
+            if let title {
+                if compact {
+                    Text(title).frame(maxWidth: 42).lineLimit(1)
+                } else {
+                    Label(title, systemImage: "tag.fill").lineLimit(1)
+                }
+            } else {
+                Image(systemName: "tag")
+                    .accessibilityLabel("标注离座去向")
+            }
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .foregroundStyle(title == nil ? Color.secondary : .orange)
+        .accessibilityLabel(title.map { "离座标签：\($0)" } ?? "标注离座去向")
+        .help(title.map { "离座标签：\($0)" } ?? "标注离座去向")
     }
 }
 
@@ -106,6 +157,7 @@ struct ActivityRecordsPage: View {
                                 Image(systemName: departure.kind.symbol).foregroundStyle(.orange).frame(width: 16)
                                 Text(departure.kind.title)
                                 Spacer(minLength: 0)
+                                DepartureLabelMenu(app: app, departure: departure)
                                 Text(departure.end == nil ? "进行中" : DurationText.short(departure.duration(at: app.now)))
                                     .foregroundStyle(.secondary).monospacedDigit()
                             }.font(.system(size: 12)).padding(.vertical, 9)

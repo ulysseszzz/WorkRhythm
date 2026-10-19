@@ -134,7 +134,7 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
         configureNotifications()
     }
     func start() {
-        log("app_start", "version=1.1.0 build=16 schema=2; Chinese interface and unified departures")
+        log("app_start", "version=1.1.0 build=17 schema=2; quick departure labels")
         monitor.start()
         startHeartbeat()
         checkpoint()
@@ -354,7 +354,10 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
         pendingReminder = nil
     }
     func label(_ session: Session, _ label: String) {
-        perform { try ledger.label(id: session.id, value: label) }; revision += 1
+        self.label(session.id, label)
+    }
+    func label(_ id: UUID, _ label: String) {
+        perform { try ledger.label(id: id, value: label) }; revision += 1
     }
     func calibrateFromLastCandidate() {
         guard let measured = machine.candidateAge, measured >= 0, measured <= 5 else { return }

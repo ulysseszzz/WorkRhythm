@@ -228,7 +228,7 @@ struct TimelinePage: View {
                             Text("跨日 · 仅显示本日部分")
                         }
                     }.font(.callout).foregroundStyle(.secondary)
-                    if session.kind == .away {
+                    if DepartureRecord(session) != nil {
                         HStack {
                             Menu(session.label.isEmpty ? "添加标签" : AppSettings.labelTitle(session.label)) {
                                 ForEach(AppSettings.labels, id: \.self) { label in Button(label) { app.label(session, label) } }

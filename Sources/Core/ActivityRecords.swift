@@ -52,6 +52,7 @@ public struct DepartureRecord: Identifiable {
     public let end: Date?
     public let kind: Kind
     public let recovered: Bool
+    public let label: String
     public func duration(at now: Date) -> TimeInterval { max(0, (end ?? now).timeIntervalSince(start)) }
     public init?(_ session: Session) {
         switch session.kind {
@@ -73,6 +74,7 @@ public struct DepartureRecord: Identifiable {
         start = session.start
         end = session.end
         recovered = session.recovered
+        label = session.label
     }
 }
 

@@ -338,6 +338,21 @@ final class StateAndDataTests: XCTestCase {
         XCTAssertEqual(focus.pauseDuration, 300)
         XCTAssertTrue(focus.interrupted)
     }
+    func testDepartureLabelsPersistForLockAndLid() throws {
+        let repo = try repository()
+        let ledger = try SessionLedger(repository: repo)
+        try ledger.transition(Transition(state: .locked, at: start, reason: "lock", confidence: 1))
+        try ledger.transition(Transition(state: .active, at: start.addingTimeInterval(60), reason: "unlock", confidence: 1))
+        try ledger.transition(Transition(state: .moving, at: start.addingTimeInterval(120),
+                                         reason: "lid_closed_possible_moving", confidence: 1))
+        let locked = try XCTUnwrap(ledger.sessions.first { $0.kind == .locked })
+        let lid = try XCTUnwrap(ledger.sessions.first { $0.kind == .moving })
+        try ledger.label(id: locked.id, value: "会议")
+        try ledger.label(id: lid.id, value: "用餐")
+        let restored = try SessionLedger(repository: repo)
+        XCTAssertEqual(restored.sessions.first { $0.id == locked.id }?.label, "会议")
+        XCTAssertEqual(restored.sessions.first { $0.id == lid.id }?.label, "用餐")
+    }
     func testReminderSuppressionGraceAndFocus() {
         var settings = AppSettings(); settings.hydrationMinutes = 1; settings.returnGraceSeconds = 120
         var policy = ReminderPolicy(now: start, settings: settings, lastDrink: start.addingTimeInterval(-3600))
