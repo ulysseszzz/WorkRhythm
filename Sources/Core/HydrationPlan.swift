@@ -58,7 +58,7 @@ public enum DrinkPreset: String, Codable, CaseIterable {
         case .waterBottle:
             return [.init(350, "瓶装"), .init(500, "瓶装"), .init(550, "瓶装"), .init(1500, "大瓶")]
         case .coffee:
-            return [.init(240, "听装"), .init(268, "瓶装"), .init(270, "瓶装"), .init(450, "瓶装")]
+            return [.init(240, "听装"), .init(270, "瓶装"), .init(450, "瓶装")]
         case .milkTea:
             return [.init(250, "瓶装"), .init(300, "杯装"), .init(350, "瓶装"), .init(400, "瓶装")]
         case .cola:
@@ -68,6 +68,11 @@ public enum DrinkPreset: String, Codable, CaseIterable {
         case .milk:
             return [.init(200, "盒装"), .init(250, "盒装"), .init(500, "盒装"), .init(1000, "家庭装")]
         }
+    }
+    /// A small custom serving plus researched package sizes. Nearby package variants
+    /// are represented by one node while the slider remains continuous.
+    public var amountNodes: [Int] {
+        Array(Set([150] + servingOptions.map(\.amountML))).sorted()
     }
 }
 

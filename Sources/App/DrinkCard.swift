@@ -124,6 +124,13 @@ struct DrinkComposer: View {
         _amount = ViewState(initialValue: DrinkAmount.bounded(plan.servingML(for: plan.selectedDrink)))
     }
     private var selectedML: Int { DrinkAmount.bounded(amount) }
+    private var nodes: [Int] { selection.amountNodes }
+    private var sliderAmount: Binding<Double> {
+        Binding(
+            get: { DrinkAmount.sliderPosition(for: selectedML, nodes: nodes) },
+            set: { amount = DrinkAmount.amount(atSliderPosition: $0, nodes: nodes) }
+        )
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -148,32 +155,28 @@ struct DrinkComposer: View {
             }
             VStack(spacing: 2) {
                 HStack {
-                    Text("常见包装").font(.system(size: 10)).foregroundStyle(.secondary)
+                    Text("容量 · 可自由拖动").font(.system(size: 10)).foregroundStyle(.secondary)
                     Spacer()
                     Text("\(selectedML) mL").font(.system(size: 12, weight: .semibold)).monospacedDigit()
                 }
-                Grid(horizontalSpacing: 5, verticalSpacing: 5) {
-                    ForEach(0..<2) { row in
-                        GridRow {
-                            ForEach(Array(selection.servingOptions[(row * 2)..<(row * 2 + 2)]), id: \.self) { option in
-                                Button { amount = option.amountML } label: {
-                                    HStack(spacing: 4) {
-                                        Text("\(option.amountML)").fontWeight(selectedML == option.amountML ? .semibold : .regular)
-                                        Text("mL · \(option.container)").foregroundStyle(.secondary)
-                                    }
-                                    .font(.system(size: 10))
-                                    .frame(maxWidth: .infinity, minHeight: 26)
-                                    .background(selectedML == option.amountML ? tint.opacity(0.18) : Color.primary.opacity(0.035),
-                                                in: RoundedRectangle(cornerRadius: 6))
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel("\(option.container) \(option.amountML) 毫升")
-                            }
-                        }
+                Slider(value: sliderAmount, in: 0...Double(nodes.count - 1))
+                    .tint(tint)
+                    .accessibilityLabel("\(selection.shortTitle)容量，可连续调整")
+                    .accessibilityValue("\(selectedML) 毫升")
+                GeometryReader { geometry in
+                    ForEach(Array(nodes.enumerated()), id: \.element) { index, ml in
+                        Button("\(ml)") { amount = ml }
+                            .buttonStyle(.plain)
+                            .font(.system(size: 10, weight: selectedML == ml ? .bold : .regular))
+                            .foregroundStyle(selectedML == ml ? tint : .secondary)
+                            .frame(width: 46, height: 18)
+                            .contentShape(Rectangle())
+                            .position(x: 10 + CGFloat(index) / CGFloat(nodes.count - 1) * (geometry.size.width - 20), y: 9)
+                            .accessibilityLabel("选择\(selection.shortTitle) \(ml) 毫升节点")
                     }
-                }
+                }.frame(height: 18)
                 HStack(spacing: 6) {
-                    Text("实际饮用").font(.system(size: 10)).foregroundStyle(.secondary)
+                    Text("精确容量").font(.system(size: 10)).foregroundStyle(.secondary)
                     Spacer()
                     TextField("容量", value: $amount, format: .number)
                         .textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing)

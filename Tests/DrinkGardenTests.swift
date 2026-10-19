@@ -31,11 +31,17 @@ final class DrinkGardenTests: XCTestCase {
         XCTAssertEqual(DrinkPreset.tea.servingOptions.map(\.amountML), [250, 310, 500, 1000])
         XCTAssertEqual(DrinkPreset.cola.servingOptions.map(\.amountML), [200, 330, 500, 888])
         XCTAssertEqual(DrinkPreset.milk.servingOptions.map(\.amountML), [200, 250, 500, 1000])
-        XCTAssertEqual(DrinkPreset.coffee.servingOptions.map(\.amountML), [240, 268, 270, 450])
+        XCTAssertEqual(DrinkPreset.coffee.servingOptions.map(\.amountML), [240, 270, 450])
         for preset in DrinkPreset.allCases {
             XCTAssertTrue(preset.servingOptions.map(\.amountML).contains(preset.defaultML))
             XCTAssertTrue(preset.servingOptions.allSatisfy { DrinkAmount.isValid($0.amountML) })
+            XCTAssertEqual(preset.amountNodes.first, 150)
+            XCTAssertEqual(preset.amountNodes, Array(Set(preset.amountNodes)).sorted())
         }
+        XCTAssertEqual(DrinkPreset.coffee.amountNodes, [150, 240, 270, 450])
+        XCTAssertFalse(DrinkPreset.coffee.amountNodes.contains(268))
+        XCTAssertTrue(DrinkPreset.cola.amountNodes.contains(330))
+        XCTAssertTrue(DrinkPreset.waterBottle.amountNodes.contains(500))
         XCTAssertTrue(DrinkPreset.tea.servingOptions.contains(.init(250, "盒装")))
         XCTAssertTrue(DrinkPreset.cola.servingOptions.contains(.init(330, "听装")))
         XCTAssertTrue(DrinkPreset.waterBottle.servingOptions.contains(.init(500, "瓶装")))
@@ -44,6 +50,18 @@ final class DrinkGardenTests: XCTestCase {
         XCTAssertEqual(DrinkAmount.bounded(3000), 2000)
         XCTAssertTrue(DrinkAmount.isValid(330))
         XCTAssertTrue(DrinkAmount.isValid(500))
+    }
+    func testSegmentedContinuousSliderAlignsNodesAndAllowsCustomValues() {
+        let nodes = DrinkPreset.waterBottle.amountNodes
+        for (index, node) in nodes.enumerated() {
+            XCTAssertEqual(DrinkAmount.sliderPosition(for: node, nodes: nodes), Double(index), accuracy: 0.0001)
+            XCTAssertEqual(DrinkAmount.amount(atSliderPosition: Double(index), nodes: nodes), node)
+        }
+        let halfway = DrinkAmount.amount(atSliderPosition: 1.5, nodes: nodes)
+        XCTAssertEqual(halfway, 425)
+        XCTAssertEqual(DrinkAmount.sliderPosition(for: halfway, nodes: nodes), 1.5, accuracy: 0.0001)
+        XCTAssertEqual(DrinkAmount.amount(atSliderPosition: -1, nodes: nodes), 150)
+        XCTAssertEqual(DrinkAmount.amount(atSliderPosition: 99, nodes: nodes), 1500)
     }
     func testTeaMilkPersistenceUndoAndLegacyRainbow() throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

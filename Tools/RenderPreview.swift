@@ -488,15 +488,15 @@ struct RenderPreview {
         }
         try await press("水 · 500 mL", exact: false)
         try await press("选择咖啡，不记录")
-        try await press("瓶装 268 毫升")
+        try await press("选择咖啡 270 毫升节点")
         precondition(interactionApp.water.isEmpty, "Selection must not record")
-        try await press("记录咖啡 · 268 mL")
-        precondition(interactionApp.waterProgress.totalML == 268 && interactionApp.waterProgress.count == 1)
+        try await press("记录咖啡 · 270 mL")
+        precondition(interactionApp.waterProgress.totalML == 270 && interactionApp.waterProgress.count == 1)
         precondition(interactionApp.settings.waterPlan.selectedDrink == .coffee)
-        try await press("记录咖啡 268 毫升")
-        precondition(interactionApp.waterProgress.totalML == 536 && interactionApp.waterProgress.count == 2)
+        try await press("记录咖啡 270 毫升")
+        precondition(interactionApp.waterProgress.totalML == 540 && interactionApp.waterProgress.count == 2)
         try await press("撤销")
-        precondition(interactionApp.waterProgress.totalML == 268 && interactionApp.waterProgress.count == 1)
+        precondition(interactionApp.waterProgress.totalML == 270 && interactionApp.waterProgress.count == 1)
         try await press("花历")
         precondition(openedPage == "history")
         try await press("全部", exact: false)
@@ -513,7 +513,7 @@ struct RenderPreview {
         }
         try "PASS: native chooser, select without saving, confirm once, remembered quick record, undo, flower calendar and full records navigation; lock, lid and active departure records/counts with quick labels; dense layout with focus/reminder/error."
             .write(to: output.appendingPathComponent("interaction-result.txt"), atomically: true, encoding: .utf8)
-        try Data("PASS: garden trophy persistence and four-day calendar in light/dark; six drinks with market package sizes and exact custom amounts, invalid ranges rejected, tea310 and milk250 persisted, matcha undo/restart, twelve recipe artwork previews; main menu no NSScrollView and natural contents fit 440/380pt; legacy timeline/cache/hydration regression. Live animation/visibility: \(canCheckLiveAnimation ? "PASS" : "SKIPPED (window occluded)")".utf8)
+        try Data("PASS: garden trophy persistence and four-day calendar in light/dark; six drinks with merged package nodes, continuous sliders and exact custom amounts, invalid ranges rejected, tea310 and milk250 persisted, matcha undo/restart, twelve recipe artwork previews; main menu no NSScrollView and natural contents fit 440/380pt; legacy timeline/cache/hydration regression. Live animation/visibility: \(canCheckLiveAnimation ? "PASS" : "SKIPPED (window occluded)")".utf8)
             .write(to: output.appendingPathComponent("result.txt"))
         NSApp.terminate(nil)
     }

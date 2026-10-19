@@ -89,6 +89,25 @@ public enum DrinkAmount {
     public static let range = 10...2000
     public static func bounded(_ ml: Int) -> Int { min(range.upperBound, max(range.lowerBound, ml)) }
     public static func isValid(_ ml: Int) -> Bool { range.contains(ml) }
+    public static func sliderPosition(for amount: Int, nodes: [Int]) -> Double {
+        guard nodes.count > 1 else { return 0 }
+        let value = bounded(amount)
+        if value <= nodes[0] { return 0 }
+        for index in 0..<(nodes.count - 1) where value <= nodes[index + 1] {
+            let lower = nodes[index]
+            let width = nodes[index + 1] - lower
+            return Double(index) + Double(value - lower) / Double(width)
+        }
+        return Double(nodes.count - 1)
+    }
+    public static func amount(atSliderPosition position: Double, nodes: [Int]) -> Int {
+        guard let first = nodes.first else { return range.lowerBound }
+        guard nodes.count > 1 else { return bounded(first) }
+        let clamped = min(Double(nodes.count - 1), max(0, position))
+        let index = min(nodes.count - 2, Int(clamped.rounded(.down)))
+        let fraction = clamped - Double(index)
+        return bounded(Int((Double(nodes[index]) + Double(nodes[index + 1] - nodes[index]) * fraction).rounded()))
+    }
     public static func parse(_ text: String) -> Int? {
         guard let value = Int(text.trimmingCharacters(in: .whitespacesAndNewlines)),
               isValid(value) else { return nil }
