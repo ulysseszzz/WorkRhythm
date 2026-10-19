@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VERSION="${VERSION:-1.1.0}"
 DERIVED_DATA="${DERIVED_DATA_PATH:-${TMPDIR:-/tmp}/WorkRhythm-Release-DerivedData}"
 OUTPUT_DIR="${1:-$ROOT/dist}"
-APP="$DERIVED_DATA/Build/Products/Release/WorkRhythm.app"
+APP="$DERIVED_DATA/Build/Products/Release/工位节奏.app"
 ARCHIVE="$OUTPUT_DIR/WorkRhythm-v$VERSION-macOS-universal.zip"
 CHECKSUM="$OUTPUT_DIR/WorkRhythm-v$VERSION-SHA256.txt"
 
@@ -26,8 +26,8 @@ xcodebuild \
 
 codesign --verify --deep --strict "$APP"
 test "$(defaults read "$APP/Contents/Info.plist" CFBundleShortVersionString)" = "$VERSION"
-test "$(lipo -archs "$APP/Contents/MacOS/WorkRhythm")" = "x86_64 arm64" \
-  || test "$(lipo -archs "$APP/Contents/MacOS/WorkRhythm")" = "arm64 x86_64"
+test "$(lipo -archs "$APP/Contents/MacOS/工位节奏")" = "x86_64 arm64" \
+  || test "$(lipo -archs "$APP/Contents/MacOS/工位节奏")" = "arm64 x86_64"
 codesign -dvv "$APP" 2>&1 | grep -q "flags=.*runtime"
 if codesign -d --entitlements :- "$APP" 2>&1 | grep -q "get-task-allow"; then
   printf 'Release must not contain get-task-allow\n' >&2

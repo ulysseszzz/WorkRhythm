@@ -7,12 +7,13 @@ import UniformTypeIdentifiers
 
 final class AppController: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     @Published var revision = 0 {
-        didSet { summaryCache.removeAll(keepingCapacity: true) }
+        didSet { summaryCache.invalidateAll() }
     }
     @Published var state: WorkstationState = .unknown
     @Published var now = Date() {
         didSet {
-            summaryCache.removeAll(keepingCapacity: true)
+            summaryCache.invalidate(oldValue)
+            summaryCache.invalidate(now)
             if !Calendar.current.isDate(oldValue, inSameDayAs: now) { hydrationFeedback = "" }
         }
     }
@@ -24,7 +25,7 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
     @Published var hydrationFeedback = ""
     @Published var settings: AppSettings {
         didSet {
-            summaryCache.removeAll(keepingCapacity: true)
+            summaryCache.invalidateAll()
             perform { try repository.saveSettings(settings) }
             machine.window = settings.effectiveWindow
             monitor.settings = settings
@@ -55,7 +56,7 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
     private var lastCheckpointUptime: TimeInterval = 0
     private var lastConfigurationUptime: TimeInterval = 0
     private var lastPrunedDay = Calendar.current.startOfDay(for: Date())
-    private var summaryCache: [Date: DailySummary] = [:]
+    private let summaryCache = DailySummaryCache()
     private let timelineCache = DayTimelineCache(capacity: 4)
     private var cachedEvents: (version: UInt64, rows: [SystemEvent])?
     private var cachedScreenDays: [Date: (version: UInt64, rows: [SystemEvent])] = [:]
@@ -134,7 +135,7 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
         configureNotifications()
     }
     func start() {
-        log("app_start", "version=1.1.0 build=17 schema=2; quick departure labels")
+        log("app_start", "version=1.1.0 build=18 schema=2; Chinese app name and heartbeat cache optimization")
         monitor.start()
         startHeartbeat()
         checkpoint()
@@ -234,19 +235,17 @@ final class AppController: NSObject, ObservableObject, UNUserNotificationCenterD
             notify(kind, title: kind == "water" ? "该喝水了" : "起来活动一下",
                    body: kind == "water" ? "今天已记录 \(waterProgress.totalML) mL。喝好后点击喝水卡片，按当前每次 \(settings.waterPlan.servingML) mL 记录。" : "已连续在工位 \(DurationText.short(ledger.openWork.map { now.timeIntervalSince($0.start) } ?? 0))。可以用触发角开始一次休息。")
         }
-        revision += 1; statusChanged?()
+        statusChanged?()
         if let interval = heartbeatInterval {
             heartbeat?.fireDate = Date().addingTimeInterval(RuntimeBudget.heartbeatDelay(
                 interval: interval, sinceCheckpoint: ProcessInfo.processInfo.systemUptime - lastCheckpointUptime))
         }
     }
     func summary(_ day: Date) -> DailySummary {
-        let key = Calendar.current.startOfDay(for: day)
-        if let result = summaryCache[key] { return result }
-        let result = StatisticsService.summary(date: day, sessions: sessions, focuses: focuses, hydration: water, settings: settings, now: now)
-        if summaryCache.count >= 64 { summaryCache.removeAll(keepingCapacity: true) }
-        summaryCache[key] = result
-        return result
+        summaryCache.value(for: day) {
+            StatisticsService.summary(date: day, sessions: sessions, focuses: focuses,
+                                      hydration: water, settings: settings, now: now)
+        }
     }
     func startFocus(_ minutes: Double) {
         guard state.atDesk, currentFocus == nil else { return }

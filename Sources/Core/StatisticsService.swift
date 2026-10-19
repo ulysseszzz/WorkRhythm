@@ -33,6 +33,26 @@ public struct DailySummary {
     public var leave: Double { away + moving + locked }
 }
 
+public final class DailySummaryCache {
+    private var values: [Date: DailySummary] = [:]
+    private let capacity: Int
+    public var count: Int { values.count }
+    public init(capacity: Int = 64) { self.capacity = max(1, capacity) }
+    public func value(for day: Date, calendar: Calendar = .current,
+                      load: () -> DailySummary) -> DailySummary {
+        let key = calendar.startOfDay(for: day)
+        if let value = values[key] { return value }
+        if values.count >= capacity { values.removeAll(keepingCapacity: true) }
+        let value = load()
+        values[key] = value
+        return value
+    }
+    public func invalidate(_ day: Date, calendar: Calendar = .current) {
+        values.removeValue(forKey: calendar.startOfDay(for: day))
+    }
+    public func invalidateAll() { values.removeAll(keepingCapacity: true) }
+}
+
 public enum StatisticsService {
     public static func overlap(start: Date, end: Date?, range: DateInterval, now: Date) -> Double {
         max(0, min(end ?? now, range.end, now).timeIntervalSince(max(start, range.start)))

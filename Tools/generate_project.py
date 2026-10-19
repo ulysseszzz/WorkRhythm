@@ -27,7 +27,7 @@ for path in sources:
     file_ref = add(relative, f'isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "{relative}"; sourceTree = SOURCE_ROOT;')
     file_refs.append(file_ref)
     build_refs.append(add("build:" + relative, f"isa = PBXBuildFile; fileRef = {file_ref};"))
-app = add("product", 'isa = PBXFileReference; explicitFileType = wrapper.application; path = WorkRhythm.app; sourceTree = BUILT_PRODUCTS_DIR;')
+app = add("product", 'isa = PBXFileReference; explicitFileType = wrapper.application; path = "工位节奏.app"; sourceTree = BUILT_PRODUCTS_DIR;')
 products = add("products", f"isa = PBXGroup; children = {refs([app])}; name = Products; sourceTree = \"<group>\";")
 main_group = add("main-group", f'isa = PBXGroup; children = {refs(file_refs + [products])}; sourceTree = "<group>";')
 phase = add("sources", f"isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = {refs(build_refs)}; runOnlyForDeploymentPostprocessing = 0;")
@@ -45,9 +45,9 @@ common = """
     ENABLE_HARDENED_RUNTIME = YES;
     ENABLE_APP_SANDBOX = NO;
     PRODUCT_BUNDLE_IDENTIFIER = local.workrhythm.app;
-    PRODUCT_NAME = WorkRhythm;
+    PRODUCT_NAME = "工位节奏";
     MARKETING_VERSION = 1.1.0;
-    CURRENT_PROJECT_VERSION = 17;
+    CURRENT_PROJECT_VERSION = 18;
     GENERATE_INFOPLIST_FILE = NO;
     INFOPLIST_FILE = Resources/Info.plist;
     LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks";
@@ -73,7 +73,7 @@ output += f"\n}}; rootObject = {root}; }}\n"
 (PROJECT / "project.pbxproj").write_text(output)
 scheme_dir = PROJECT / "xcshareddata/xcschemes"
 scheme_dir.mkdir(parents=True, exist_ok=True)
-reference = f'<BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="{target}" BuildableName="WorkRhythm.app" BlueprintName="WorkRhythm" ReferencedContainer="container:WorkRhythm.xcodeproj"/>'
+reference = f'<BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="{target}" BuildableName="工位节奏.app" BlueprintName="WorkRhythm" ReferencedContainer="container:WorkRhythm.xcodeproj"/>'
 (scheme_dir / "WorkRhythm.xcscheme").write_text(f'''<?xml version="1.0" encoding="UTF-8"?>
 <Scheme LastUpgradeVersion="2700" version="1.3">
 <BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES"><BuildActionEntries><BuildActionEntry buildForTesting="YES" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="YES" buildForAnalyzing="YES">{reference}</BuildActionEntry></BuildActionEntries></BuildAction>

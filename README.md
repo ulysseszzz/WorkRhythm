@@ -36,7 +36,7 @@
 
 ### GitHub Release
 
-从 [Releases](../../releases/latest) 下载 `WorkRhythm-v1.0.0-macOS-universal.zip`，解压后将 `WorkRhythm.app` 移入 `/Applications`。
+从 [Releases](../../releases/latest) 下载通用版 ZIP，解压后将 `工位节奏.app` 移入 `/Applications`。
 
 当前公开二进制使用 **ad-hoc 签名且未经过 Apple 公证**。首次打开可能需要在 Finder 中右键 App →“打开”并确认。不要关闭 Gatekeeper 或 SIP。
 
@@ -50,7 +50,7 @@ python3 Tools/generate_project.py
 xcodebuild -project WorkRhythm.xcodeproj -scheme WorkRhythm \
   -configuration Release \
   -derivedDataPath /tmp/WorkRhythm-DerivedData build
-open /tmp/WorkRhythm-DerivedData/Build/Products/Release/WorkRhythm.app
+open /tmp/WorkRhythm-DerivedData/Build/Products/Release/工位节奏.app
 ```
 
 也可直接打开 `WorkRhythm.xcodeproj`，选择 `WorkRhythm` scheme 和 `My Mac`。
