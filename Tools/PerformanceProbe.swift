@@ -83,12 +83,9 @@ struct PerformanceProbe {
             print(name, row)
         }
         try await measure("background", duration: 30)
-        for theme in HydrationTheme.allCases {
-            app.updateWaterPlan { $0.themeID = theme.rawValue }
-            window.contentViewController = NSHostingController(rootView: MenuContent(app: app))
-            window.orderFrontRegardless()
-            try await measure("menu_\(theme.rawValue)")
-        }
+        window.contentViewController = NSHostingController(rootView: MenuContent(app: app))
+        window.orderFrontRegardless()
+        try await measure("menu_garden_water")
         app.updateWaterPlan { $0.ambientMotion = false }
         try await measure("menu_motion_off")
         app.updateWaterPlan { $0.ambientMotion = true }

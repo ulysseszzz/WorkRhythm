@@ -83,10 +83,10 @@ final class HydrationTests: XCTestCase {
                                                settings: settings, now: now + 6)
         XCTAssertEqual(summary.waterML, 1090)
     }
-    func testThemeMigrationPersistenceAndUnchangedProgress() throws {
+    func testLegacyThemesUseGardenWithoutChangingProgress() throws {
         let oldPlan = Data(#"{"dailyTargetML":1800,"plannedDrinks":9,"customServingML":250}"#.utf8)
         let decoded = try JSONDecoder().decode(HydrationPlan.self, from: oldPlan)
-        XCTAssertEqual(decoded.theme, .bottle)
+        XCTAssertEqual(decoded.theme, .flowers)
         XCTAssertTrue(decoded.motionEnabled)
         XCTAssertEqual(decoded.servingML, 250)
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -100,12 +100,12 @@ final class HydrationTests: XCTestCase {
             settings.hydrationPlan = plan
             try repository.saveSettings(settings)
             let restored = try repository.settings().waterPlan
-            XCTAssertEqual(restored.theme, theme); XCTAssertFalse(restored.motionEnabled)
+            XCTAssertEqual(restored.theme, .flowers); XCTAssertFalse(restored.motionEnabled)
             let progress = HydrationProgress(events: try repository.hydration(), plan: restored, date: now)
             XCTAssertEqual(progress.totalML, 250); XCTAssertEqual(progress.count, 1)
         }
         var future = decoded; future.themeID = "unknown_future_theme"
-        XCTAssertEqual(future.theme, .bottle)
+        XCTAssertEqual(future.theme, .flowers)
     }
     func testLegacySettingsAndEventsRemainReadableWithoutInventedVolumes() throws {
         let oldEvent = """

@@ -11,7 +11,6 @@ struct HydrationBottleCard: View {
     var onRecord: (DrinkPreset, Int) -> Void
     var onUndo: () -> Void
     var onSettings: () -> Void
-    var onTheme: (HydrationTheme) -> Void = { _ in }
     var onHistory: () -> Void = {}
     var spacious = false
     @ViewState private var showComposer = false
@@ -30,22 +29,14 @@ struct HydrationBottleCard: View {
                 .help("查看每天开出的花和奖杯")
                 Button("图鉴") { showRecipes = true }
                     .popover(isPresented: $showRecipes) { RecipeCatalog(garden: progress.garden) }
-                Menu {
-                    ForEach(HydrationTheme.allCases, id: \.self) { theme in
-                        Button { onTheme(theme) } label: {
-                            Label(theme.title, systemImage: progress.plan.theme == theme ? "checkmark" : theme.symbol)
-                        }
-                    }
-                    Divider()
-                    Button("饮水计划", action: onSettings)
-                } label: { Image(systemName: "ellipsis") }
-                    .menuStyle(.borderlessButton).fixedSize().help("切换花园 / 水瓶，调整饮水计划")
+                Button(action: onSettings) { Image(systemName: "slider.horizontal.3") }
+                    .help("调整饮水计划")
             }.font(.system(size: 11)).buttonStyle(.plain).foregroundStyle(.secondary)
             HStack(spacing: spacious ? 16 : 12) {
                 ZStack {
                     Circle().fill(recipe.tint.opacity(0.07))
                         .frame(width: spacious ? 154 : 102, height: spacious ? 154 : 102)
-                    HydrationScene(theme: progress.plan.theme, fraction: progress.fraction,
+                    HydrationScene(theme: .flowers, fraction: progress.fraction,
                                    motionEnabled: progress.plan.motionEnabled, recipe: recipe)
                         .frame(width: spacious ? 154 : compact ? 86 : 98,
                                height: spacious ? 184 : compact ? 100 : 116)
@@ -59,13 +50,6 @@ struct HydrationBottleCard: View {
                             .lineLimit(1).minimumScaleFactor(0.65)
                         Text("mL").font(.system(size: 10)).foregroundStyle(.secondary)
                     }
-                    GeometryReader { geometry in
-                        Capsule().fill(recipe.tint.opacity(0.13))
-                        Capsule().fill(recipe.tint.gradient)
-                            .frame(width: geometry.size.width * progress.fraction)
-                    }.frame(height: 4).padding(.vertical, 2)
-                        .accessibilityLabel("今日饮水目标完成度")
-                        .accessibilityValue("\(Int(progress.fraction * 100))%")
                     Text("目标 \(progress.plan.targetML) · \(Int(progress.fraction * 100))%")
                         .font(.system(size: 10)).foregroundStyle(.secondary).monospacedDigit()
                     Text(progress.completed ? "今日已达标 · 花开留念" : "再饮 \(max(0, progress.plan.targetML - progress.totalML)) mL 达标")
@@ -103,10 +87,10 @@ struct HydrationBottleCard: View {
         }
         .padding(10)
         .background {
-            RoundedRectangle(cornerRadius: 15)
-                .fill(LinearGradient(colors: [recipe.tint.opacity(0.12), recipe.tint.opacity(0.025)],
-                                     startPoint: .topLeading, endPoint: .bottomTrailing))
+            HydrationWaterBackdrop(fraction: progress.fraction,
+                                   motionEnabled: progress.plan.motionEnabled, recipe: recipe)
         }
+        .clipShape(RoundedRectangle(cornerRadius: 15))
         .overlay(RoundedRectangle(cornerRadius: 15).strokeBorder(recipe.tint.opacity(0.12), lineWidth: 0.5))
     }
 }
@@ -210,8 +194,8 @@ struct RecipeCatalog: View {
                 Text("\(garden.unlocked.count) / \(GardenRecipe.allCases.count)").font(.caption).foregroundStyle(.secondary)
             }
             HStack {
-                HydrationScene(theme: .flowers, fraction: 1, motionEnabled: true, recipe: selected).frame(width: 78, height: 106)
-                HydrationScene(theme: .bottle, fraction: 0.8, motionEnabled: true, recipe: selected).frame(width: 58, height: 90)
+                HydrationScene(theme: .flowers, fraction: 1, motionEnabled: true, recipe: selected)
+                    .frame(width: 110, height: 120)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(selected.title).font(.headline).foregroundStyle(selected.tint)
                     Text(selected.formula).font(.caption)

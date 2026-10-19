@@ -58,43 +58,38 @@ struct RenderPreview {
             try await capture(MenuContent(app: app, availableHeight: height).background(Color(nsColor: .windowBackgroundColor)),
                         size: NSSize(width: 340, height: height), name: name)
         }
-        for theme in HydrationTheme.allCases {
-            app.updateWaterPlan { $0.themeID = theme.rawValue }
-            try await render("menu-\(theme.rawValue)-empty")
-        }
+        try await render("menu-garden-empty")
         precondition(app.summary(app.now).waterML == 0)
         for _ in 0..<3 { app.drink(source: "preview_fixture") }
         precondition(app.waterProgress.totalML == 600)
         precondition(app.summary(app.now).waterML == 600, "Summary cache must invalidate on drink")
-        for theme in HydrationTheme.allCases {
-            app.updateWaterPlan { $0.themeID = theme.rawValue }
-            try await render("menu-\(theme.rawValue)-partial")
-        }
+        try await render("menu-garden-partial")
         app.undoLastDrink()
         precondition(app.waterProgress.totalML == 400)
         precondition(app.summary(app.now).waterML == 400, "Summary cache must invalidate on undo")
         try await render("menu-undo")
         for _ in 0..<6 { app.drink(source: "preview_fixture") }
         precondition(app.waterProgress.completed)
-        for theme in HydrationTheme.allCases {
-            app.updateWaterPlan { $0.themeID = theme.rawValue }
-            try await render("menu-\(theme.rawValue)-complete")
-        }
+        try await render("menu-garden-complete")
         try await render("menu-short-screen", height: 380)
         try await capture(DashboardPage(app: app).frame(width: 770, height: 700).background(Color(nsColor: .windowBackgroundColor)),
                     size: NSSize(width: 770, height: 700), name: "dashboard")
-        let gallery = HStack(spacing: 24) {
-            ForEach(HydrationTheme.allCases, id: \.self) { theme in
-                VStack(spacing: 12) {
-                    Text(theme.title).font(.headline)
-                    ForEach([0.0, 0.5, 1.0], id: \.self) { fraction in
-                        HydrationArtwork(theme: theme, fraction: fraction, phase: 0.5).frame(width: 120, height: 160)
-                        Text("\(Int(fraction * 100))%").font(.caption).foregroundStyle(.secondary)
+        let gallery = HStack(spacing: 18) {
+            ForEach([0.0, 0.5, 1.0], id: \.self) { fraction in
+                VStack(spacing: 10) {
+                    ZStack {
+                        HydrationWaterBackdrop(fraction: fraction, motionEnabled: false, recipe: .teaBell)
+                        HydrationArtwork(theme: .flowers, fraction: fraction, phase: 0.5, recipe: .teaBell)
+                            .padding(12)
                     }
+                    .frame(width: 130, height: 190)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.teal.opacity(0.15)))
+                    Text("\(Int(fraction * 100))%").font(.caption).foregroundStyle(.secondary)
                 }
             }
         }.padding(24).background(Color(nsColor: .windowBackgroundColor))
-        try await capture(gallery, size: NSSize(width: 460, height: 680), name: "themes")
+        try await capture(gallery, size: NSSize(width: 490, height: 260), name: "water-levels")
         try await capture(MenuContent(app: app).background(Color(nsColor: .windowBackgroundColor)),
                     size: NSSize(width: 340, height: 440), name: "menu-dark", dark: true)
         // Verify native window and scroll visibility with the same probe used by animation.
@@ -181,13 +176,51 @@ struct RenderPreview {
                          "Retained hidden scene must remove compositor animations")
             return first != second
         }
-        for theme in HydrationTheme.allCases {
-            let moving = try await animationFrames(theme: theme, enabled: true)
-            let disabled = try await animationFrames(theme: theme, enabled: false)
-            precondition(moving != NSWorkspace.shared.accessibilityDisplayShouldReduceMotion,
-                         "Scene must animate unless system Reduce Motion is enabled")
-            precondition(!disabled, "Disabled motion must remain still")
+        func waterFrames(enabled: Bool) async throws -> Bool {
+            let scene = HydrationWaterBackdrop(fraction: 0.65, motionEnabled: enabled, recipe: .teaBell)
+            let host = NSHostingView(rootView: scene)
+            let w = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 300, height: 220),
+                             styleMask: [.borderless], backing: .buffered, defer: false)
+            w.contentView = host; w.level = .floating; w.center(); w.orderFrontRegardless()
+            func water(in view: NSView) -> HydrationWaterLayerView.WaterView? {
+                if let found = view as? HydrationWaterLayerView.WaterView { return found }
+                return view.subviews.compactMap { water(in: $0) }.first
+            }
+            func layers(_ layer: CALayer) -> [CALayer] {
+                [layer] + (layer.sublayers ?? []).flatMap(layers)
+            }
+            func frame() throws -> Data {
+                host.layoutSubtreeIfNeeded()
+                let native = water(in: host)!
+                let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: 600, pixelsHigh: 440,
+                    bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true, isPlanar: false,
+                    colorSpaceName: .deviceRGB, bytesPerRow: 0, bitsPerPixel: 0)!
+                let context = NSGraphicsContext(bitmapImageRep: bitmap)!.cgContext
+                context.scaleBy(x: 2, y: 2)
+                (native.layer!.presentation() ?? native.layer!).render(in: context)
+                return bitmap.representation(using: .png, properties: [:])!
+            }
+            try await Task.sleep(for: .seconds(0.3))
+            let first = try frame()
+            try await Task.sleep(for: .seconds(0.7))
+            let second = try frame()
+            let prefix = "water-\(enabled ? "motion" : "disabled")"
+            try first.write(to: output.appendingPathComponent("\(prefix)-a.png"))
+            try second.write(to: output.appendingPathComponent("\(prefix)-b.png"))
+            w.orderOut(nil)
+            try await Task.sleep(for: .seconds(0.2))
+            precondition(layers(water(in: host)!.layer!).allSatisfy { ($0.animationKeys() ?? []).isEmpty },
+                         "Hidden water backdrop must remove compositor animations")
+            return first != second
         }
+        let gardenMoving = try await animationFrames(theme: .flowers, enabled: true)
+        let gardenDisabled = try await animationFrames(theme: .flowers, enabled: false)
+        let waterMoving = try await waterFrames(enabled: true)
+        let waterDisabled = try await waterFrames(enabled: false)
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        precondition(gardenMoving != reduceMotion && waterMoving != reduceMotion,
+                     "Garden and water must animate unless system Reduce Motion is enabled")
+        precondition(!gardenDisabled && !waterDisabled, "Disabled motion must remain still")
         } else {
             window.orderOut(nil)
             probe.stop()
@@ -318,12 +351,10 @@ struct RenderPreview {
         precondition(restored.settings.waterPlan.servingML(for: .milkTea) == 700)
         precondition(restored.settings.waterPlan.selectedDrink == .milkTea)
         precondition(restored.waterProgress.garden == fresh.waterProgress.garden)
-        fresh.updateWaterPlan { $0.themeID = "flowers" }
         try await capture(MenuContent(app: fresh).background(Color(nsColor: .windowBackgroundColor)),
                           size: NSSize(width: 340, height: 440), name: "menu-latte")
         fresh.undoLastDrink()
         precondition(fresh.waterProgress.garden.recipe == .sunshine)
-        fresh.updateWaterPlan { $0.themeID = "bottle" }
         try await capture(MenuContent(app: fresh, availableHeight: 380).background(Color(nsColor: .windowBackgroundColor)),
                           size: NSSize(width: 340, height: 380), name: "menu-coffee-small")
         fresh.startFocus(25)
@@ -339,10 +370,8 @@ struct RenderPreview {
         let recipes = LazyVGrid(columns: [GridItem(.fixed(190)), GridItem(.fixed(190))], spacing: 18) {
             ForEach(GardenRecipe.allCases, id: \.self) { recipe in
                 VStack(spacing: 5) {
-                    HStack(spacing: 6) {
-                        HydrationArtwork(theme: .flowers, fraction: 1, phase: 0, recipe: recipe).frame(width: 90, height: 122)
-                        HydrationArtwork(theme: .bottle, fraction: 0.8, phase: 0, recipe: recipe).frame(width: 63, height: 100)
-                    }
+                    HydrationArtwork(theme: .flowers, fraction: 1, phase: 0, recipe: recipe)
+                        .frame(width: 120, height: 122)
                     Text(recipe.title).font(.headline).foregroundStyle(recipe.tint)
                     Text(recipe.formula).font(.caption).foregroundStyle(.secondary)
                 }.padding(10).background(recipe.tint.opacity(0.05), in: RoundedRectangle(cornerRadius: 10))
@@ -359,7 +388,6 @@ struct RenderPreview {
         sliderApp.recordPresetDrink(.milk, amountML: 250)
         precondition(sliderApp.waterProgress.totalML == 560)
         precondition(sliderApp.waterProgress.garden.recipe == .matcha)
-        sliderApp.updateWaterPlan { $0.themeID = "flowers" }
         for height: CGFloat in [380, 440] {
             let natural = NSHostingView(rootView: MenuContent(app: sliderApp, availableHeight: height)
                 .menuBody.frame(width: 340).fixedSize(horizontal: false, vertical: true))
@@ -513,7 +541,7 @@ struct RenderPreview {
         }
         try "PASS: native chooser, select without saving, confirm once, remembered quick record, undo, flower calendar and full records navigation; lock, lid and active departure records/counts with quick labels; dense layout with focus/reminder/error."
             .write(to: output.appendingPathComponent("interaction-result.txt"), atomically: true, encoding: .utf8)
-        try Data("PASS: garden trophy persistence and four-day calendar in light/dark; six drinks with merged package nodes, continuous sliders and exact custom amounts, invalid ranges rejected, tea310 and milk250 persisted, matcha undo/restart, twelve recipe artwork previews; main menu no NSScrollView and natural contents fit 440/380pt; legacy timeline/cache/hydration regression. Live animation/visibility: \(canCheckLiveAnimation ? "PASS" : "SKIPPED (window occluded)")".utf8)
+        try Data("PASS: rising card water levels at empty/partial/complete, garden and water animations stop when hidden or disabled; garden trophy persistence and four-day calendar in light/dark; six drinks with merged package nodes, continuous sliders and exact custom amounts, invalid ranges rejected, tea310 and milk250 persisted, matcha undo/restart, twelve recipe artwork previews; main menu no NSScrollView and natural contents fit 440/380pt; legacy timeline/cache/hydration regression. Live animation/visibility: \(canCheckLiveAnimation ? "PASS" : "SKIPPED (window occluded)")".utf8)
             .write(to: output.appendingPathComponent("result.txt"))
         NSApp.terminate(nil)
     }

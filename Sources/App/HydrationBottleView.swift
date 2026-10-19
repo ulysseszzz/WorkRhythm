@@ -44,6 +44,131 @@ struct HydrationScene: View {
     }
 }
 
+/// The card itself acts as the bottle: its waterline rises with daily progress.
+/// Core Animation moves cached shape layers without invalidating the card contents.
+struct HydrationWaterBackdrop: View {
+    let fraction: Double
+    var motionEnabled = true
+    var recipe: GardenRecipe = .dew
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ObservedObject private var energy = AnimationEnergyPolicy.shared
+    @ViewState private var visible = false
+    var body: some View {
+        HydrationWaterLayerView(fraction: fraction, recipe: recipe,
+            fps: visible && motionEnabled && !reduceMotion ? energy.framesPerSecond : 0)
+        .background(SceneVisibilityProbe { visible = $0 })
+        .accessibilityHidden(true)
+    }
+}
+
+struct HydrationWaterLayerView: NSViewRepresentable {
+    let fraction: Double
+    let recipe: GardenRecipe
+    let fps: Double
+    func makeNSView(context: Context) -> WaterView { WaterView() }
+    func updateNSView(_ view: WaterView, context: Context) {
+        view.configure(fraction: fraction, recipe: recipe, fps: fps)
+    }
+    static func dismantleNSView(_ view: WaterView, coordinator: ()) { view.stopMotion() }
+
+    final class WaterView: NSView {
+        override var isFlipped: Bool { true }
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+        private var fraction = -1.0
+        private var recipe: GardenRecipe = .dew
+        private var fps = 0.0
+        private var renderedSize = CGSize.zero
+        private var moving: [CALayer] = []
+        private var appliedFPS = -1.0
+        private var dirty = true
+        override init(frame frameRect: NSRect) {
+            super.init(frame: frameRect)
+            wantsLayer = true
+            layer?.masksToBounds = true
+        }
+        required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+        func configure(fraction: Double, recipe: GardenRecipe, fps: Double) {
+            let clamped = min(1, max(0, fraction))
+            if self.fraction != clamped || self.recipe != recipe { dirty = true }
+            self.fraction = clamped
+            self.recipe = recipe
+            self.fps = clamped > 0 ? fps : 0
+            rebuildIfNeeded()
+            updateMotion()
+        }
+        override func layout() {
+            super.layout()
+            rebuildIfNeeded()
+            updateMotion()
+        }
+        private func rebuildIfNeeded() {
+            guard bounds.width > 0, bounds.height > 0, fraction >= 0, let root = layer else { return }
+            guard dirty || renderedSize != bounds.size else { return }
+            CATransaction.begin(); CATransaction.setDisableActions(true)
+            defer { CATransaction.commit() }
+            root.sublayers = nil
+            moving.removeAll()
+            appliedFPS = -1
+            dirty = false
+            renderedSize = bounds.size
+            let color = NSColor(red: recipe.rgb.0, green: recipe.rgb.1, blue: recipe.rgb.2, alpha: 1)
+            let base = CAGradientLayer()
+            base.frame = bounds
+            base.colors = [color.withAlphaComponent(0.045).cgColor, color.withAlphaComponent(0.018).cgColor]
+            base.startPoint = CGPoint(x: 0, y: 0)
+            base.endPoint = CGPoint(x: 1, y: 1)
+            root.addSublayer(base)
+            guard fraction > 0 else { return }
+            let amplitude: CGFloat = 3
+            let width = bounds.width + amplitude * 8
+            let level = fraction >= 1 ? -amplitude : bounds.height * CGFloat(1 - fraction)
+            for index in 0..<2 {
+                let wave = CAShapeLayer()
+                wave.frame = CGRect(x: -amplitude * 4, y: 0, width: width, height: bounds.height)
+                let path = CGMutablePath()
+                let offset = CGFloat(index) * 2
+                path.move(to: CGPoint(x: 0, y: level + offset))
+                var x: CGFloat = 0
+                while x <= width {
+                    let y = level + offset + sin(x * 0.055 + CGFloat(index) * 2.2) * amplitude
+                    path.addLine(to: CGPoint(x: x, y: y))
+                    x += 3
+                }
+                path.addLine(to: CGPoint(x: width, y: bounds.height))
+                path.addLine(to: CGPoint(x: 0, y: bounds.height))
+                path.closeSubpath()
+                wave.path = path
+                wave.fillColor = color.withAlphaComponent(index == 0 ? 0.075 : 0.115).cgColor
+                root.addSublayer(wave)
+                moving.append(wave)
+            }
+        }
+        func stopMotion() {
+            moving.forEach { $0.removeAllAnimations() }
+            appliedFPS = -1
+        }
+        private func updateMotion() {
+            guard appliedFPS != fps else { return }
+            moving.forEach { $0.removeAllAnimations() }
+            appliedFPS = fps
+            guard fps > 0 else { return }
+            for (index, wave) in moving.enumerated() {
+                let animation = CABasicAnimation(keyPath: "transform.translation.x")
+                let travel = bounds.width * (index == 0 ? 0.035 : 0.025)
+                animation.fromValue = index == 0 ? -travel : travel
+                animation.toValue = index == 0 ? travel : -travel
+                animation.duration = index == 0 ? 2.4 : 3.1
+                animation.autoreverses = true
+                animation.repeatCount = .infinity
+                animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                animation.preferredFrameRateRange = CAFrameRateRange(
+                    minimum: Float(fps), maximum: Float(fps), preferred: Float(fps))
+                wave.add(animation, forKey: "waterline")
+            }
+        }
+    }
+}
+
 /// Rasterize tiny vector parts only when their content/size changes. Core Animation
 /// moves the cached parts; no per-frame SwiftUI invalidation or Canvas execution.
 struct HydrationLayerView: NSViewRepresentable {

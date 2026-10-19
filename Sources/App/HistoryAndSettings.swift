@@ -253,16 +253,10 @@ struct SettingsPage: View {
                 }
                 Text("合盖、锁屏、屏幕睡眠和系统睡眠会暂停专注。无操作不等于不专注，不会自动结束番茄钟。").font(.caption).foregroundStyle(.secondary)
             }
-            Section("喝水主题与每日计划") {
-                Picker("陪伴主题", selection: Binding(get: { app.settings.waterPlan.theme },
-                    set: { theme in app.updateWaterPlan { $0.themeID = theme.rawValue } })) {
-                    ForEach(HydrationTheme.allCases, id: \.self) { theme in
-                        Label(theme.title, systemImage: theme.symbol).tag(theme)
-                    }
-                }
-                Toggle("水波与微风动画", isOn: Binding(get: { app.settings.waterPlan.motionEnabled },
+            Section("喝水与每日计划") {
+                Toggle("水位与微风动画", isOn: Binding(get: { app.settings.waterPlan.motionEnabled },
                     set: { enabled in app.updateWaterPlan { $0.ambientMotion = enabled } }))
-                Text("水瓶与花园随今日水量成长，饮品组合决定水色和花型。点“配方图鉴”可预览全部花朵。动画只在可见时运行；低电量模式下降频，过热或开启“减少动态效果”时静止。")
+                Text("卡片背景水位随今日饮水进度升高，前景花园同步生长；饮品组合决定水色和花型。点“配方图鉴”可预览全部花朵。动画只在可见时运行；低电量模式下降频，过热或开启“减少动态效果”时静止。")
                     .font(.caption).foregroundStyle(.secondary)
                 Stepper("每日目标 \(app.settings.waterPlan.targetML) mL",
                         value: Binding(get: { app.settings.waterPlan.targetML },

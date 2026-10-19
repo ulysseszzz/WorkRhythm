@@ -102,10 +102,8 @@ public struct HydrationPlan: Codable, Equatable {
     public var ambientMotion: Bool?
     public var presetVolumesML: [String: Int]?
     public var servingOptionsVersion: Int?
-    public var theme: HydrationTheme {
-        if themeID == "ivy" { return .flowers }
-        return HydrationTheme(rawValue: themeID ?? "") ?? .bottle
-    }
+    /// Legacy theme values remain decodable, but the card now always uses the garden.
+    public var theme: HydrationTheme { .flowers }
     public var lastDrinkPresetID: String?
     public var selectedDrink: DrinkPreset { DrinkPreset(rawValue: lastDrinkPresetID ?? "") ?? .waterBottle }
     public var motionEnabled: Bool { ambientMotion ?? true }

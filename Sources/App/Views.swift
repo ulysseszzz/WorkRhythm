@@ -152,7 +152,6 @@ struct MenuContent: View {
                                 compact: availableHeight < 440,
                                 onRecord: { app.recordPresetDrink($0, amountML: $1) },
                                 onUndo: { app.undoLastDrink() }, onSettings: { app.openPage?("settings") },
-                                onTheme: { theme in app.updateWaterPlan { $0.themeID = theme.rawValue } },
                                 onHistory: { app.openPage?("history") })
             RecentActivityCard(app: app, compact: availableHeight < 440)
             Spacer(minLength: 0)
@@ -274,7 +273,6 @@ struct DashboardPage: View {
                     HydrationBottleCard(progress: app.waterProgress, feedback: app.hydrationFeedback,
                                     onRecord: { app.recordPresetDrink($0, amountML: $1) },
                                     onUndo: { app.undoLastDrink() }, onSettings: { app.openPage?("settings") },
-                                    onTheme: { theme in app.updateWaterPlan { $0.themeID = theme.rawValue } },
                                     onHistory: { app.openPage?("history") }, spacious: true)
                     VStack(alignment: .leading, spacing: 18) {
                         RecentActivityCard(app: app)
